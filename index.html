@@ -1153,45 +1153,61 @@ function importExcel(event) {
       // Column mapping: Excel header → internal key
       const MAP = {
         'id': 'id',
-        'VN/HS/SG contract': 'contract', 'contract': 'contract',
-        'L2 engineer': 'l2engineer', 'l2engineer': 'l2engineer',
-        'L1 engineer': 'l1engineer', 'l1engineer': 'l1engineer',
-        'OT': 'ot', 'ot': 'ot',
-        'Qty': 'qty', 'qty': 'qty',
-        'Case No': 'caseNo', 'caseNo': 'caseNo',
-        'Country': 'country', 'country': 'country',
-        'Contract number': 'contractNumber', 'contractNumber': 'contractNumber',
-        'Company Name': 'companyName', 'companyName': 'companyName',
-        'EU': 'eu', 'eu': 'eu',
-        'Manufacturer': 'manufacturer', 'manufacturer': 'manufacturer',
-        'Model': 'model', 'model': 'model',
-        'Serial Number or Service Tag': 'serialNumber', 'serialNumber': 'serialNumber',
-        'SLA Level': 'slaLevel', 'slaLevel': 'slaLevel',
-        'SLA Met?': 'slaMet', 'slaMet': 'slaMet',
-        'Quarter': 'quarter', 'quarter': 'quarter',
-        'Month': 'month', 'month': 'month',
-        'Call Req_Received Date': 'receivedDate', 'receivedDate': 'receivedDate',
-        'Call Receive time': 'receivedTime', 'receivedTime': 'receivedTime',
-        'Onsite Date/Sending part date (1st batch)': 'onsiteDate1',
-        'Onsite Date 1st batch': 'onsiteDate1', 'onsiteDate1': 'onsiteDate1',
-        'Onsite Time/Sending part time (1st batch)': 'onsiteTime1',
-        'Onsite Time 1st batch': 'onsiteTime1', 'onsiteTime1': 'onsiteTime1',
-        'Onsite Date/Sending part date (2nd batch)': 'onsiteDate2',
-        'Onsite Date 2nd batch': 'onsiteDate2', 'onsiteDate2': 'onsiteDate2',
-        'Onsite Time/Sending part time (2nd batch)': 'onsiteTime2',
-        'Onsite Time 2nd batch': 'onsiteTime2', 'onsiteTime2': 'onsiteTime2',
-        'Case Status\n(Closed / Pending)': 'caseStatus', 'Case Status': 'caseStatus', 'caseStatus': 'caseStatus',
-        'Case Pending Reason': 'pendingReason', 'pendingReason': 'pendingReason',
-        'Symptom': 'symptom', 'symptom': 'symptom',
-        'Part Replaced ': 'partReplaced', 'Part Replaced': 'partReplaced', 'partReplaced': 'partReplaced',
-        'Part qty': 'partQty', 'partQty': 'partQty',
-        'Action Plan': 'actionPlan', 'actionPlan': 'actionPlan',
-        'New part SN': 'newPartSN', 'newPartSN': 'newPartSN',
-        'Defective part SN': 'defectivePartSN', 'defectivePartSN': 'defectivePartSN',
-        'Request by': 'requestBy', 'requestBy': 'requestBy',
-        'Contact Person': 'contactPerson', 'contactPerson': 'contactPerson',
-        'Note': 'note', 'note': 'note',
+        'item no': 'itemNo',
+        'vn/hs/sg contract': 'contract', 'contract': 'contract',
+        'l2 engineer': 'l2engineer', 'l2engineer': 'l2engineer',
+        'l1 engineer': 'l1engineer', 'l1engineer': 'l1engineer',
+        'ot': 'ot',
+        'qty': 'qty',
+        'case no': 'caseNo', 'caseno': 'caseNo',
+        'country': 'country',
+        'contract number': 'contractNumber', 'contractnumber': 'contractNumber',
+        'company name': 'companyName', 'companyname': 'companyName',
+        'eu': 'eu',
+        'manufacturer': 'manufacturer',
+        'model': 'model',
+        'serial number or service tag': 'serialNumber', 'serialnumber': 'serialNumber', 'serial number': 'serialNumber',
+        'sla level': 'slaLevel', 'slalevel': 'slaLevel',
+        'sla met?': 'slaMet', 'sla met': 'slaMet', 'slamet': 'slaMet', 'slamet?': 'slaMet',
+        'quarter': 'quarter',
+        'month': 'month',
+        'call req_received date': 'receivedDate', 'receiveddate': 'receivedDate', 'call req received date': 'receivedDate',
+        'call receive time': 'receivedTime', 'receivedtime': 'receivedTime',
+        'onsite date/sending part date (1st batch)': 'onsiteDate1', 'onsite date 1st batch': 'onsiteDate1', 'onsitedate1': 'onsiteDate1',
+        'onsite time/sending part time (1st batch)': 'onsiteTime1', 'onsite time 1st batch': 'onsiteTime1', 'onsitetime1': 'onsiteTime1',
+        'onsite date/sending part date (2nd batch)': 'onsiteDate2', 'onsite date 2nd batch': 'onsiteDate2', 'onsitedate2': 'onsiteDate2',
+        'onsite time/sending part time (2nd batch)': 'onsiteTime2', 'onsite time 2nd batch': 'onsiteTime2', 'onsitetime2': 'onsiteTime2',
+        // Case Status — nhiều variant do Excel lưu newline khác nhau
+        'case status': 'caseStatus', 'casestatus': 'caseStatus',
+        'case status(closed / pending)': 'caseStatus',
+        'case status (closed / pending)': 'caseStatus',
+        // Case Pending Reason
+        'case pending reason': 'pendingReason', 'pendingreason': 'pendingReason', 'case pendingreason': 'pendingReason',
+        'symptom': 'symptom',
+        // Part Replaced — nhiều variant trailing space
+        'part replaced': 'partReplaced', 'partreplaced': 'partReplaced',
+        'part qty': 'partQty', 'partqty': 'partQty', 'part qty.': 'partQty',
+        'action plan': 'actionPlan', 'actionplan': 'actionPlan',
+        'new part sn': 'newPartSN', 'newpartsn': 'newPartSN',
+        'defective part sn': 'defectivePartSN', 'defectivepartsn': 'defectivePartSN',
+        'request by': 'requestBy', 'requestby': 'requestBy',
+        'contact person': 'contactPerson', 'contactperson': 'contactPerson',
+        'note': 'note',
       };
+
+      // Normalize column name: lowercase, collapse whitespace/newlines, trim
+      function normalizeCol(col) {
+        return String(col)
+          .replace(/[\r\n\t]+/g, ' ')   // replace newlines/tabs with space
+          .replace(/\s+/g, ' ')          // collapse multiple spaces
+          .trim()
+          .toLowerCase();
+      }
+
+      function lookupKey(col) {
+        const norm = normalizeCol(col);
+        return MAP[norm] || null;
+      }
 
       function cleanDate(val) {
         if (!val) return '';
@@ -1215,14 +1231,20 @@ function importExcel(event) {
       function cleanVal(key, val) {
         if (val === null || val === undefined) return '';
         const s = String(val).trim();
-        if (s === 'nan' || s === 'NaT' || s === 'None') return '';
+        if (s === '' || s === 'nan' || s === 'NaT' || s === 'None') return '';
         // Date fields
         if (['receivedDate','onsiteDate1','onsiteDate2'].includes(key)) return cleanDate(val);
-        // Status normalize
+        // Status normalize — handle any casing
         if (key === 'caseStatus') {
           const l = s.toLowerCase();
           if (l === 'closed') return 'Closed';
-          if (l === 'pending' || l === 'open') return 'Pending';
+          if (l.startsWith('pending') || l === 'open') return 'Pending';
+          return ''; // ignore unknown values
+        }
+        // Part Replaced — strip Excel number formatting artifacts like "1.0"
+        if (key === 'partQty') {
+          const n = parseFloat(s);
+          return isNaN(n) ? s : String(n % 1 === 0 ? Math.round(n) : n);
         }
         return s;
       }
@@ -1230,13 +1252,9 @@ function importExcel(event) {
       const imported = rows.map((row, i) => {
         const ticket = { id: Date.now().toString() + '_' + i };
         Object.entries(row).forEach(([col, val]) => {
-          const key = MAP[col] || MAP[col.trim()];
+          const key = lookupKey(col);
           if (key) ticket[key] = cleanVal(key, val);
         });
-        // Generate id if missing
-        if (!ticket.id || ticket.id.startsWith(Date.now().toString())) {
-          ticket.id = Date.now().toString() + '_' + i;
-        }
         return ticket;
       }).filter(t => t.caseNo || t.companyName || t.serialNumber); // skip empty rows
 
@@ -1257,15 +1275,14 @@ function importExcel(event) {
         let updated = 0, added = 0;
         imported.forEach(imp => {
           if (imp.caseNo && existingMap[imp.caseNo]) {
-            // UPDATE existing ticket: merge all non-empty fields from Excel
+            // UPDATE existing ticket: ghi đè tất cả field từ Excel (giữ id gốc)
             const existing = existingMap[imp.caseNo];
+            const originalId = existing.id;
             Object.keys(imp).forEach(k => {
-              if (k === 'id') return; // keep original id
-              const v = imp[k];
-              if (v !== null && v !== undefined && String(v).trim() !== '') {
-                existing[k] = v;
-              }
+              if (k === 'id') return; // giữ id gốc
+              existing[k] = imp[k]; // ghi đè kể cả field rỗng
             });
+            existing.id = originalId;
             updated++;
           } else {
             // ADD new ticket
@@ -1508,21 +1525,80 @@ function renderEngSummary() {
 /* PARTS */
 function buildPartsData() {
   const map = {};
+
+  // Normalize PN: remove inline qty suffix like "GKWHPx1" → "GKWHP", "M40THx3" → "M40TH"
+  function cleanPN(raw) {
+    return raw
+      .replace(/\s*x\s*\d+$/i, '')   // strip trailing "x1", "x3", "x 2" etc
+      .replace(/\s*\(\s*alternative\s.*\)/i, '') // strip "(Alternative PN: ...)"
+      .trim();
+  }
+
+  // Extract inline qty from PN suffix: "GKWHPx1" → 1, "M40THx3" → 3, else null
+  function inlineQty(raw) {
+    const m = raw.match(/\s*x\s*(\d+)\s*$/i);
+    return m ? parseInt(m[1]) : null;
+  }
+
   tickets.forEach(t => {
     if (!t.partReplaced || !t.partReplaced.trim()) return;
-    // part field may contain comma-separated values like "GKWHPx1, M40THx3"
-    const rawParts = t.partReplaced.split(/[,;]/).map(p=>p.trim()).filter(Boolean);
-    rawParts.forEach(rawPart => {
-      const key = rawPart.toUpperCase();
-      if (!map[key]) map[key] = { partNo: rawPart, totalQty: 0, timesUsed: 0, models: new Set(), caseNos: [], lastDate: '' };
-      const qty = parseFloat(t.partQty) || 1;
-      map[key].totalQty += qty;
+
+    // Split by comma or semicolon — but be careful of "PN (Alternative PN: A/ B)"
+    // Use a smarter split: split only on comma/semicolon NOT inside parentheses
+    const raw = t.partReplaced;
+    const parts = [];
+    let depth = 0, current = '';
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      else if ((c === ',' || c === ';') && depth === 0) {
+        if (current.trim()) parts.push(current.trim());
+        current = '';
+        continue;
+      }
+      current += c;
+    }
+    if (current.trim()) parts.push(current.trim());
+
+    const totalTicketQty = parseFloat(t.partQty) || 0;
+    const numParts = parts.length;
+
+    parts.forEach((rawPart, idx) => {
+      const iq  = inlineQty(rawPart);   // qty embedded in PN string
+      const pn  = cleanPN(rawPart);
+      if (!pn) return;
+      const key = pn.toUpperCase();
+
+      // Qty logic:
+      // 1. If inline qty in PN (e.g. "GKWHPx1") → use that
+      // 2. Else if only 1 part → use partQty from ticket
+      // 3. Else multiple parts → divide partQty evenly (or 1 each)
+      let qty;
+      if (iq !== null) {
+        qty = iq;
+      } else if (numParts === 1) {
+        qty = totalTicketQty || 1;
+      } else {
+        qty = totalTicketQty > 0 ? Math.round(totalTicketQty / numParts) || 1 : 1;
+      }
+
+      if (!map[key]) map[key] = {
+        partNo: pn,
+        totalQty: 0,
+        timesUsed: 0,
+        models: new Set(),
+        caseNos: [],
+        lastDate: ''
+      };
+      map[key].totalQty  += qty;
       map[key].timesUsed++;
-      if (t.model) map[key].models.add(t.model.trim());
-      if (t.caseNo) map[key].caseNos.push(t.caseNo);
+      if (t.model)       map[key].models.add(t.model.trim());
+      if (t.caseNo)      map[key].caseNos.push(t.caseNo);
       if (t.receivedDate && t.receivedDate > map[key].lastDate) map[key].lastDate = t.receivedDate;
     });
   });
+
   return Object.values(map).map(x => ({ ...x, models: [...x.models] }));
 }
 
