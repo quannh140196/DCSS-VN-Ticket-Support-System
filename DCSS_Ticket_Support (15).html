@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCSS VN — Ticket Support</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #dde3ec;
+    --accent: #0057b8;
+    --accent-dark: #003d8a;
+    --accent2: #0096c7;
+    --accent-light: #e8f0fb;
+    --navy: #001f5b;
+    --accent3: #00a86b;
+    --warn: #e67e00;
+    --danger: #d32f2f;
+    --text: #1a2540;
+    --text2: #4a5a7a;
+    --text3: #8898b0;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+  
+  /* HEADER */
+  .header {
+    background: var(--navy);
+    border-bottom: 3px solid var(--accent);
+    padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,31,91,0.18);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-badge {
+    background: var(--accent); color: #fff; font-family: var(--mono);
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 4px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .logo-title { font-size: 15px; font-weight: 600; letter-spacing: 0.3px; color: #ffffff; }
+  .header-actions { display: flex; gap: 8px; }
+  
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 5px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; font-family: var(--sans); transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 1px 4px rgba(0,87,184,.25); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-success { background: var(--accent3); color: #fff; }
+  .btn-success:hover { background: #007a4e; }
+  .btn-ghost { background: rgba(255,255,255,0.12); color: #d0dff5; border: 1px solid rgba(255,255,255,0.2); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.2); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #b71c1c; }
+  .btn-warn { background: var(--warn); color: #fff; }
+  .btn-warn:hover { background: #c46a00; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  
+  /* STATS */
+  .stats-bar {
+    padding: 10px 28px; display: flex; gap: 12px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); background: var(--navy);
+  }
+  .stat-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px; padding: 6px 16px; font-size: 12px;
+  }
+  .stat-chip .num { font-family: var(--mono); font-size: 16px; font-weight: 700; color: #7ec8ff; }
+  .stat-chip .lbl { color: #93aacf; font-size: 11px; }
+  .stat-closed .num { color: #5eeba0; }
+  .stat-pending .num { color: #ffc46e; }
+  .stat-sla .num { color: #b3d4ff; }
+  
+  /* TOOLBAR */
+  .toolbar {
+    padding: 12px 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 220px; max-width: 380px; }
+  .search-wrap input {
+    width: 100%; background: #fff; border: 1.5px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 7px 12px 7px 34px;
+    font-size: 13px; font-family: var(--sans); outline: none;
+    box-shadow: 0 1px 3px rgba(0,31,91,.06);
+  }
+  .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,87,184,.1); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 14px; }
+  select.filter-sel {
+    background: #fff; border: 1.5px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: var(--sans);
+    outline: none; cursor: pointer; min-width: 120px;
+    box-shadow: 0 1px 3px rgba(0,31,91,.06);
+  }
+  select.filter-sel:focus { border-color: var(--accent); }
+  
+  /* TABLE */
+  .table-wrap { overflow-x: auto; overflow-y: auto; padding: 0 28px 24px; }
+  .table-scroll-inner { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 210px); border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,31,91,.07); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th {
+    background: var(--navy); color: #b3cde8; font-family: var(--mono);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 11px 12px; text-align: left; white-space: nowrap;
+    border-bottom: 2px solid var(--accent); position: sticky; top: 0;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; background: #fff; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody tr:hover { background: var(--accent-light); }
+  tbody td { padding: 9px 12px; color: var(--text); vertical-align: middle; white-space: nowrap; }
+  .td-mono { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .td-dim { color: var(--text2); }
+  
+  /* BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 4px; padding: 2px 9px; font-size: 11px; font-weight: 600;
+    font-family: var(--mono); letter-spacing: 0.3px;
+  }
+  .badge-closed { background: #e6f7f0; color: #00784a; border: 1px solid #b3e8d1; }
+  .badge-pending { background: #fff4e0; color: #b85c00; border: 1px solid #ffd799; }
+  .badge-yes { background: #e6f7f0; color: #00784a; border: 1px solid #b3e8d1; }
+  .badge-no { background: #fdecea; color: var(--danger); border: 1px solid #f5b8b8; }
+  .badge-vn { background: #e8f0fb; color: var(--accent); border: 1px solid #b3cdf5; }
+  .badge-hs { background: #f0ebff; color: #5c35cc; border: 1px solid #c9b8f5; }
+  .badge-sg { background: #fff3e8; color: #c15000; border: 1px solid #ffc499; }
+  .empty-row td { text-align: center; color: var(--text3); padding: 40px; font-style: italic; }
+  
+  /* MODAL OVERLAY */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,15,50,.45);
+    backdrop-filter: blur(6px); z-index: 200;
+    display: flex; align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 24px;
+  }
+  .modal {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    width: 100%; max-width: 900px; padding: 28px; position: relative;
+    animation: slideIn 0.2s ease; box-shadow: 0 20px 60px rgba(0,31,91,.18);
+  }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--accent);
+  }
+  .modal-title { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--navy); }
+  .modal-close {
+    background: none; border: none; color: var(--text2); cursor: pointer;
+    font-size: 20px; line-height: 1; padding: 4px; border-radius: 4px;
+  }
+  .modal-close:hover { background: var(--accent-light); color: var(--accent); }
+  
+  /* FORM */
+  .form-section { margin-bottom: 24px; }
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: #fff; font-family: var(--mono);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px;
+    padding: 6px 12px; background: var(--accent); border-radius: 4px;
+    display: inline-block;
+  }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .form-grid-2 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-group.span2 { grid-column: span 2; }
+  .field-group.span3 { grid-column: 1 / -1; }
+  label { font-size: 11px; color: var(--text2); font-weight: 600; letter-spacing: 0.3px; }
+  label .req { color: var(--danger); margin-left: 2px; }
+  input, select, textarea {
+    background: #fff; border: 1.5px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 8px 10px;
+    font-size: 13px; font-family: var(--sans); outline: none;
+    width: 100%; transition: border 0.15s;
+    box-shadow: 0 1px 2px rgba(0,31,91,.05);
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,87,184,.1); }
+  textarea { resize: vertical; min-height: 70px; }
+  .modal-footer {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding-top: 20px; border-top: 1px solid var(--border); margin-top: 8px;
+  }
+
+  /* DETAIL PANEL */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-item { padding: 10px 14px; background: #f4f7fc; border-radius: 6px; border-left: 3px solid var(--accent); }
+  .detail-label { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .detail-value { font-size: 13px; color: var(--text); font-weight: 500; }
+  
+  .no-data { display: none; }
+  .pagination { display: flex; align-items: center; gap: 8px; padding: 12px 28px; justify-content: flex-end; border-top: 1px solid var(--border); background: #fff; }
+  .pg-btn { background: #fff; border: 1.5px solid var(--border); color: var(--text2); border-radius: 5px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+  .pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .pg-btn:disabled { opacity: 0.4; cursor: default; }
+  .pg-info { font-size: 12px; color: var(--text2); }
+
+  /* TABS */
+  .tab-nav {
+    display: flex; gap: 0; border-bottom: 2px solid var(--border);
+    background: #fff; padding: 0 28px;
+    box-shadow: 0 2px 6px rgba(0,31,91,.05);
+  }
+  .tab-btn {
+    padding: 13px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; background: transparent; color: var(--text2); font-family: var(--sans);
+    border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px; letter-spacing: 0.2px;
+  }
+  .tab-btn:hover { color: var(--accent); background: var(--accent-light); }
+  .tab-btn.active { color: var(--navy); border-bottom-color: var(--accent); font-weight: 700; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* DASHBOARD */
+  .dash-wrap { padding: 24px 28px; }
+  .dash-row { display: grid; gap: 16px; margin-bottom: 20px; }
+  .dash-row-4 { grid-template-columns: repeat(4, 1fr); }
+  .dash-row-2 { grid-template-columns: 1fr 1fr; }
+  .dash-row-1 { grid-template-columns: 1fr; }
+  .kpi-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; border-top: 4px solid var(--accent);
+    box-shadow: 0 2px 8px rgba(0,31,91,.07);
+  }
+  .kpi-label { font-size: 11px; color: var(--text2); font-family: var(--mono); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .kpi-value { font-size: 30px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 5px; }
+  .kpi-card.green { border-top-color: var(--accent3); }
+  .kpi-card.green .kpi-value { color: var(--accent3); }
+  .kpi-card.orange { border-top-color: var(--warn); }
+  .kpi-card.orange .kpi-value { color: var(--warn); }
+  .kpi-card.purple { border-top-color: #5c35cc; }
+  .kpi-card.purple .kpi-value { color: #5c35cc; }
+
+  .chart-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px; box-shadow: 0 2px 8px rgba(0,31,91,.07);
+  }
+  .chart-card-title {
+    font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--navy);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .chart-card-sub { font-size: 11px; color: var(--text2); margin-bottom: 16px; }
+  .chart-container { position: relative; }
+  .period-tabs { display: flex; gap: 4px; }
+  .period-btn {
+    padding: 4px 12px; font-size: 11px; font-family: var(--mono); border-radius: 4px;
+    cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--text2);
+  }
+  .period-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  /* PARTS TABLE */
+  .parts-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .parts-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 480px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,31,91,.06); }
+  .parts-table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+  .parts-table th:nth-child(1) { width: 140px; }
+  .parts-table th:nth-child(2) { width: 150px; }
+  .parts-table th:nth-child(3) { width: 90px; }
+  .parts-table th:nth-child(4) { width: 100px; }
+  .parts-table th:nth-child(5) { width: 200px; }
+  .parts-table th:nth-child(6) { width: 160px; }
+  .parts-table th:nth-child(7) { width: 90px; }
+  .parts-table th:nth-child(8) { width: 80px; }
+  .parts-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .parts-table thead th {
+    background: var(--navy); color: #b3cde8; font-family: var(--mono);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 10px 14px; text-align: left; white-space: nowrap;
+    border-bottom: 2px solid var(--accent); cursor: pointer; user-select: none;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .parts-table thead th:hover { color: #fff; }
+  .parts-table tbody tr { border-bottom: 1px solid var(--border); background: #fff; }
+  .parts-table tbody tr:nth-child(even) { background: #f8fafc; }
+  .parts-table tbody tr:hover { background: var(--accent-light); }
+  .parts-table tbody td { padding: 9px 14px; vertical-align: middle; }
+  .reorder-input {
+    background: #fff; border: 1.5px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: var(--mono);
+    width: 70px; text-align: center;
+  }
+  .reorder-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(0,87,184,.1); }
+  .usage-bar { display: flex; align-items: center; gap: 8px; }
+  .usage-bar-track { flex: 1; min-width: 60px; height: 5px; background: #dde3ec; border-radius: 3px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+  .eng-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 3px; padding: 1px 7px; font-size: 10px; font-family: var(--mono);
+    font-weight: 600; margin: 1px;
+  }
+  .tag-high { background: #fdecea; color: var(--danger); border: 1px solid #f5b8b8; }
+  .tag-med { background: #fff4e0; color: #b85c00; border: 1px solid #ffd799; }
+  .tag-low { background: #e6f7f0; color: #00784a; border: 1px solid #b3e8d1; }
+  .sort-icon { opacity: 0.4; font-size: 9px; }
+  .sort-icon.active { opacity: 1; color: var(--accent); }
+
+  @media (max-width: 800px) {
+    .dash-row-4 { grid-template-columns: 1fr 1fr; }
+    .dash-row-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <span class="logo-badge">DCSS</span>
+    <span class="logo-title">VN Ticket Support System</span>
+  </div>
+  <div class="header-actions">
+    <span id="syncStatus" style="font-size:11px;font-family:var(--mono);color:var(--text3);display:flex;align-items:center;gap:5px"></span>
+    <button class="btn btn-ghost btn-sm" onclick="toggleConfig()">⚙ Google Sheets</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportExcel()">⬇ Export Excel</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Import từ file Excel (.xlsx)">
+      ⬆ Import Excel
+      <input type="file" accept=".xlsx,.xls" onchange="importExcel(event)" style="display:none">
+    </label>
+    <button class="btn btn-primary btn-sm" onclick="openForm()">+ New Ticket</button>
+  </div>
+</div>
+
+<!-- GOOGLE SHEETS CONFIG PANEL -->
+<div id="configPanel" style="display:none;background:#f0f4f8;border-bottom:2px solid var(--border);border-top:1px solid var(--border);padding:14px 24px;">
+  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:1;min-width:300px">
+      <label style="font-size:11px;color:var(--text2);font-family:var(--mono);display:block;margin-bottom:5px">APPS SCRIPT URL</label>
+      <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/YOUR_ID/exec"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--mono);outline:none">
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="connectSheet()">🔗 Connect & Load</button>
+    <button class="btn btn-success btn-sm" onclick="pushSeedToSheet()" id="seedBtn" style="display:none">⬆ Push 73 Tickets lên Sheet</button>
+    <button class="btn btn-ghost btn-sm" onclick="disconnectSheet()">✕ Ngắt kết nối</button>
+  </div>
+  <div id="configMsg" style="margin-top:8px;font-size:12px;color:var(--text2)"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar" id="statsBar"></div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="tabTickets" onclick="switchTab('tickets')">🎫 Tickets</button>
+  <button class="tab-btn" id="tabDashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+  <button class="tab-btn" id="tabAudit" onclick="switchTab('audit')" style="display:none">🕓 Audit Log</button>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding:0 4px">
+    <span id="currentUserBadge" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+    <button class="btn btn-ghost btn-sm" onclick="openChangePwd()" style="font-size:11px;padding:4px 10px">🔑 Đổi mật khẩu</button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()" style="font-size:11px;padding:4px 10px">⏏ Logout</button>
+  </div>
+</div>
+
+<!-- TICKET PANEL -->
+<div class="tab-panel active" id="panelTickets">
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search Case No, Company, Engineer..." oninput="renderTable()">
+  </div>
+  <select class="filter-sel" id="filterStatus" onchange="renderTable()">
+    <option value="">All Status</option>
+    <option value="Closed">Closed</option>
+    <option value="Pending">Pending</option>
+  </select>
+  <select class="filter-sel" id="filterContract" onchange="renderTable()">
+    <option value="">All Contract</option>
+    <option value="VN">VN</option>
+    <option value="HS">HS</option>
+    <option value="SG">SG</option>
+  </select>
+  <select class="filter-sel" id="filterMonth" onchange="renderTable()">
+    <option value="">All Month</option>
+    <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+    <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+    <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+  </select>
+  <select class="filter-sel" id="filterSLA" onchange="renderTable()">
+    <option value="">SLA Met</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" id="clearFilterBtn" onclick="clearAllFilters()" style="display:none;color:var(--danger);border-color:var(--danger);white-space:nowrap">✕ Clear Filters</button>
+  <select class="filter-sel" id="pageSizeSel" onchange="changePageSize()" style="margin-left:auto">
+    <option value="20">20 / page</option>
+    <option value="50" selected>50 / page</option>
+    <option value="100">100 / page</option>
+    <option value="99999">All</option>
+  </select>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <div class="table-scroll-inner">
+  <table id="ticketTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Case No</th>
+        <th>Contract</th>
+        <th>L2 Engineer</th>
+        <th>L1 Engineer</th>
+        <th>Company</th>
+        <th>Country</th>
+        <th>Manufacturer</th>
+        <th>Model</th>
+        <th>SLA Level</th>
+        <th>SLA Met</th>
+        <th>Month</th>
+        <th>Received Date</th>
+        <th>Status</th>
+        <th>Symptom</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  </div><!-- /table-scroll-inner -->
+</div>
+<div class="pagination" id="pagination"></div>
+</div><!-- /panelTickets -->
+
+<!-- DASHBOARD PANEL -->
+<div class="tab-panel" id="panelDashboard">
+<div class="dash-wrap">
+
+  <!-- KPI ROW -->
+  <div class="dash-row dash-row-4" id="dashKpis"></div>
+
+  <!-- ENGINEER PERFORMANCE CHART -->
+  <div class="dash-row dash-row-1">
+    <div class="chart-card">
+      <div class="chart-card-title">
+        <span>🧑‍💻 Ticket Count by Engineer</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="filter-sel" id="dashEngineerRole" onchange="renderDashboard()" style="font-size:12px;padding:4px 8px">
+            <option value="l2">L2 Engineer</option>
+            <option value="l1">L1 Engineer</option>
+          </select>
+          <div class="period-tabs">
+            <button class="period-btn active" data-period="month" onclick="setPeriod(this,'month')">Month</button>
+            <button class="period-btn" data-period="week" onclick="setPeriod(this,'week')">Week</button>
+            <button class="period-btn" data-period="quarter" onclick="setPeriod(this,'quarter')">Quarter</button>
+            <button class="period-btn" data-period="year" onclick="setPeriod(this,'year')">Year</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card-sub">Number of tickets handled per engineer per period</div>
+      <div class="chart-container" style="height:320px">
+        <canvas id="chartEngineer"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENGINEER SUMMARY TABLE -->
+  <div class="dash-row dash-row-2">
+    <div class="chart-card">
+      <div class="chart-card-title">📋 Engineer Summary</div>
+      <div class="chart-card-sub">Total tickets by L2 engineer for filtered period</div>
+      <div id="engSummaryTable"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">🏭 Tickets by Manufacturer</div>
+      <div class="chart-card-sub">Distribution of support requests by vendor</div>
+      <div class="chart-container" style="height:220px">
+        <canvas id="chartMfr"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTS USAGE SECTION -->
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-card-title">
+      <span>🔩 Parts Usage & Reorder Plan</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="partSearch" placeholder="Search part no..." oninput="renderPartsTable()"
+          style="background:#fff;border:1.5px solid #dde3ec;color:#1a2540;border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--sans);outline:none;width:180px">
+        <button class="btn btn-success btn-sm" onclick="exportReorderPlan()">⬇ Export Reorder Plan</button>
+      </div>
+    </div>
+    <div class="chart-card-sub">Aggregated from all ticket records — set Reorder Qty for procurement planning</div>
+    <div class="parts-table-wrap">
+      <table class="parts-table">
+        <thead>
+          <tr>
+            <th onclick="sortParts('partNo')">Part No <span class="sort-icon" id="si-partNo">↕</span></th>
+            <th onclick="sortParts('totalQty')">Total Qty Used <span class="sort-icon" id="si-totalQty">↕</span></th>
+            <th onclick="sortParts('timesUsed')">Times Used <span class="sort-icon" id="si-timesUsed">↕</span></th>
+            <th onclick="sortParts('lastDate')">Last Used <span class="sort-icon" id="si-lastDate">↕</span></th>
+            <th>Used In Models</th>
+            <th>Tickets</th>
+            <th>Reorder Qty</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody id="partsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div><!-- /panelDashboard -->
+
+<!-- AUDIT LOG PANEL -->
+<div class="tab-panel" id="panelAudit">
+<div class="dash-wrap">
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <div style="font-size:16px;font-weight:700;color:var(--navy)">🕓 Lịch sử hoạt động</div>
+    <select class="filter-sel" id="auditFilterUser" onchange="renderAuditLog()" style="font-size:12px;padding:5px 8px;min-width:150px">
+      <option value="">Tất cả kỹ sư</option>
+    </select>
+    <select class="filter-sel" id="auditFilterAction" onchange="renderAuditLog()" style="font-size:12px;padding:5px 8px;min-width:130px">
+      <option value="">Tất cả hành động</option>
+      <option value="login">Login</option>
+      <option value="create">Tạo ticket</option>
+      <option value="update">Sửa ticket</option>
+      <option value="delete">Xóa ticket</option>
+      <option value="import">Import Excel</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="clearAuditLog()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">🗑 Xóa log</button>
+  </div>
+  <div class="parts-table-wrap" style="max-height:calc(100vh - 220px)">
+    <table class="parts-table" style="table-layout:auto">
+      <thead>
+        <tr>
+          <th style="width:160px">Thời gian</th>
+          <th style="width:160px">Kỹ sư</th>
+          <th style="width:110px">Hành động</th>
+          <th>Chi tiết</th>
+        </tr>
+      </thead>
+      <tbody id="auditTableBody"></tbody>
+    </table>
+  </div>
+</div>
+</div><!-- /panelAudit -->
+
+<div class="modal-overlay" id="formModal" style="display:none" onclick="closeIfOverlay(event,'formModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span id="formModalIcon">📋</span>
+        <span id="formModalTitle">New Ticket</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('formModal')">✕</button>
+    </div>
+    <form id="ticketForm" onsubmit="saveTicket(event)">
+      <!-- SECTION 1 -->
+      <div class="form-section">
+        <div class="form-section-title">01 — Assignment</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label>VN/HS/SG Contract<span class="req">*</span></label>
+            <select name="contract" required>
+              <option value="">Select...</option>
+              <option>VN</option><option>HS</option><option>SG</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>L2 Engineer<span class="req">*</span></label>
+            <input type="text" name="l2engineer" required placeholder="Nhập tên L2 engineer">
+          </div>
+          <div class="field-group">
+            <label>L1 Engineer<span class="req">*</span></label>
+            <select name="l1engineer" required>
+              <option value="">Select...</option>
+              <option>Tang Pham</option>
+              <option>Sang Tran</option>
+              <option>Quang Luu</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>OT</label>
+            <input type="text" name="ot" placeholder="OT value">
+          </div>
+          <div class="field-group">
+            <label>Qty</label>
+            <input type="number" name="qty" min="1" value="1">
+          </div>
+        </div>
+      </div>
+      <!-- SECTION 2 -->
+      <div class="form-section">
+        <div class="form-section-title">02 — Case Info</div>
+        <div class="form-grid">
+          <div class="field-group span2">
+            <label>Case No<span class="req">*</span></label>
+            <input type="text" name="caseNo" required placeholder="e.g. VNDCSUKNWO20260113037">
+          </div>
+          <div class="field-group">
+            <label>Country</label>
+            <input type="text" name="country" placeholder="Nhập country">
+          </div>
+          <div class="field-group span2">
+            <label>Contract Number<span class="req">*</span></label>
+            <input type="text" name="contractNumber" required placeholder="Contract number">
+          </div>
+          <div class="field-group span2">
+            <label>Company Name<span class="req">*</span></label>
+            <input type="text" name="companyName" required placeholder="Customer company name">
+          </div>
+          <div class="field-group span2">
+            <label>EU (End User)</label>
+            <input type="text" name="eu" placeholder="End user / account">
+          </div>
+        </div>
+      </div>
+      <!-- SECTION 3 -->
+      <div class="form-section">
+        <div class="form-section-title">03 — Hardware</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label>Manufacturer<span class="req">*</span></label>
+            <select name="manufacturer" required>
+              <option value="">Select...</option>
+              <option>HPE</option><option>DELL</option><option>DELL EMC</option>
+              <option>CISCO</option><option>IBM</option><option>Juniper</option>
+              <option>Oracle</option><option>Fujitsu</option><option>Brocade</option>
+              <option>NEC</option><option>F5</option><option>Hitachi</option>
+              <option>Nutanix</option><option>QNAP</option><option>Other</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Model<span class="req">*</span></label>
+            <input type="text" name="model" required placeholder="Device model">
+          </div>
+          <div class="field-group span2">
+            <label>Serial Number / Service Tag<span class="req">*</span></label>
+            <input type="text" name="serialNumber" required placeholder="SN or Service Tag">
+          </div>
+        </div>
+      </div>
+      <!-- SECTION 4 -->
+      <div class="form-section">
+        <div class="form-section-title">04 — SLA & Schedule</div>
+        <div class="form-grid">
+          <div class="field-group span2">
+            <label>SLA Level</label>
+            <select name="slaLevel">
+              <option value="">Select...</option>
+              <option>24x7 (L2+Part)</option>
+              <option>24x7x4 (L2+Part)+Update firmware</option>
+              <option>NBD</option>
+              <option>4-hour</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>SLA Met?</label>
+            <select name="slaMet">
+              <option value="">N/A</option>
+              <option>Yes</option><option>No</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Quarter</label>
+            <select name="quarter">
+              <option value="">Select...</option>
+              <option value="I">Q1</option><option value="II">Q2</option>
+              <option value="III">Q3</option><option value="IV">Q4</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Month</label>
+            <select name="month">
+              <option value="">Select...</option>
+              <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+              <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+              <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Call Req. Received Date</label>
+            <input type="date" name="receivedDate">
+          </div>
+          <div class="field-group">
+            <label>Call Receive Time</label>
+            <input type="time" name="receivedTime">
+          </div>
+          <div class="field-group">
+            <label>Onsite Date 1st Batch</label>
+            <input type="date" name="onsiteDate1">
+          </div>
+          <div class="field-group">
+            <label>Onsite Time 1st Batch</label>
+            <input type="time" name="onsiteTime1">
+          </div>
+          <div class="field-group">
+            <label>Onsite Date 2nd Batch</label>
+            <input type="date" name="onsiteDate2">
+          </div>
+          <div class="field-group">
+            <label>Onsite Time 2nd Batch</label>
+            <input type="time" name="onsiteTime2">
+          </div>
+        </div>
+      </div>
+      <!-- SECTION 5 -->
+      <div class="form-section">
+        <div class="form-section-title">05 — Case Details</div>
+        <div class="form-grid form-grid-2">
+          <div class="field-group">
+            <label>Case Status<span class="req">*</span></label>
+            <select name="caseStatus" required>
+              <option value="">Select...</option>
+              <option>Closed</option><option>Pending</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Case Pending Reason</label>
+            <input type="text" name="pendingReason" placeholder="Reason if pending">
+          </div>
+          <div class="field-group span2">
+            <label>Symptom<span class="req">*</span></label>
+            <textarea name="symptom" required placeholder="Describe the issue / symptom"></textarea>
+          </div>
+          <div class="field-group">
+            <label>Part Replaced</label>
+            <input type="text" name="partReplaced" placeholder="Part number / description">
+          </div>
+          <div class="field-group">
+            <label>Part Qty</label>
+            <input type="number" name="partQty" min="0" placeholder="0">
+          </div>
+          <div class="field-group span2">
+            <label>Action Plan</label>
+            <textarea name="actionPlan" placeholder="Steps taken or planned"></textarea>
+          </div>
+          <div class="field-group">
+            <label>New Part SN</label>
+            <input type="text" name="newPartSN" placeholder="New part serial number">
+          </div>
+          <div class="field-group">
+            <label>Defective Part SN</label>
+            <input type="text" name="defectivePartSN" placeholder="Defective part serial number">
+          </div>
+        </div>
+      </div>
+      <!-- SECTION 6 -->
+      <div class="form-section">
+        <div class="form-section-title">06 — Contacts</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label>Request By</label>
+            <input type="text" name="requestBy" placeholder="Requestor name">
+          </div>
+          <div class="field-group">
+            <label>Contact Person</label>
+            <input type="text" name="contactPerson" placeholder="Contact at customer site">
+          </div>
+          <div class="field-group span2">
+            <label>Note</label>
+            <textarea name="note" placeholder="Additional notes..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('formModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Save Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal" style="display:none" onclick="closeIfOverlay(event,'detailModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔍 Ticket Detail</div>
+      <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div id="detailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('detailModal')">Close</button>
+      <button class="btn btn-warn btn-sm" id="detailEditBtn">Edit</button>
+      <button class="btn btn-danger btn-sm" id="detailDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay" id="deleteModal" style="display:none" onclick="closeIfOverlay(event,'deleteModal')">
+  <div class="modal" style="max-width:400px;margin:auto">
+    <div class="modal-header">
+      <div class="modal-title">⚠ Confirm Delete</div>
+      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+    </div>
+    <p style="color:var(--text2);margin-bottom:20px">Are you sure you want to delete this ticket? This action cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'dcss_tickets_v1';
+const URL_KEY = 'dcss_sheet_url';
+let SHEET_URL = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwgdGWQh6-62Lbj4o_eZajYrcrZwedp0BA89y-Ua7VuSZCh8RiyMKPZxrz29c4LGsY9/exec';
+const SEED_DATA = [{"id": "1000", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260113037", "country": "VN", "contractNumber": "DCSS_SVT_04092025", "companyName": "SV TECHNOLOGIES JSC", "eu": "Viettel Post", "manufacturer": "IBM", "model": "2078-4H4", "serialNumber": "78E08R4", "slaLevel": "24x7 (L2+Part)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-13", "receivedTime": "", "onsiteDate1": "2026-01-13", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Fibre Channel ports not operational", "partReplaced": "", "partQty": "", "actionPlan": "Customer fixed, don't need replace", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1001", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260109018", "country": "VN", "contractNumber": "DCSS_SVT_01082025", "companyName": "SV TECHNOLOGIES JSC", "eu": "Viettel Group", "manufacturer": "HPE", "model": "Q1J10A", "serialNumber": "CZ201706X4", "slaLevel": "24x7x4 (L2+Part)+Update firmware", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-09", "receivedTime": "", "onsiteDate1": "2026-01-09", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drive 13 failed", "partReplaced": "765873-001", "partQty": "1.0", "actionPlan": "Replace drive 13", "newPartSN": "AC48001TVP", "defectivePartSN": "", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1002", "contract": "HS", "l2engineer": "Guoxu LU", "l1engineer": "", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260108007", "country": "VN", "contractNumber": "", "companyName": "Trinity Clover Consulting Pte Ltd", "eu": "Dell Global B.V / LG INNOTEK VIETNAM HAIPHONG", "manufacturer": "DELL", "model": "Dell POWEREDGE R730", "serialNumber": "8L76KP2", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-06", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Request health check & check firmware status", "partReplaced": "", "partQty": "", "actionPlan": "L2 gives firmware recommendation", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Tu", "contactPerson": "Mr Tu", "note": ""}, {"id": "1003", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Tang Pham", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260108003", "country": "Laos", "contractNumber": "DCSS_SVT_05122025", "companyName": "SV TECHNOLOGIES JSC", "eu": "UNITEL (Star Telecom Co., Ltd)", "manufacturer": "HPE", "model": "HPE 3PAR 8400 2-NODE STORAGE", "serialNumber": "4C17461585", "slaLevel": "24x7 (L2 support + Replacement part delivery to Hanoi same day)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-08", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "PDID 27, 236 was not cleared", "partReplaced": "", "partQty": "", "actionPlan": "Clear PDID by running command", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1004", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260105031", "country": "VN", "contractNumber": "DCSS_SVT_10112025", "companyName": "SV TECHNOLOGIES JSC", "eu": "CORONA PHU QUOC", "manufacturer": "HPE", "model": "HPE STOREONCE 5100 48TB SYSTEM", "serialNumber": "SGH810K601", "slaLevel": "HWMA 24x7 (L2+ part NBD)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-05", "receivedTime": "", "onsiteDate1": "2026-01-05", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Disk port 1E box 1 bay 5 Failed Status", "partReplaced": "869726-001", "partQty": "1.0", "actionPlan": "Replace drive 5", "newPartSN": "ZC13450H", "defectivePartSN": "", "requestBy": "Mr Khai", "contactPerson": "Mr Khai", "note": ""}, {"id": "1005", "contract": "VN", "l2engineer": "Wang LU", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226022", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "MobiFone", "manufacturer": "HPE", "model": "HPE PROLIANT XL225N GEN10 PLUS 1U NODE CONFIGURE-TO-ORDER SERVER", "serialNumber": "CZ21020D19", "slaLevel": "HWMA 8x5xNBD (L2+Part )", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-02", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Server can't boot OS", "partReplaced": "836269-001", "partQty": "1.0", "actionPlan": "Replace RAID controller", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Bang", "contactPerson": "Mr Bang", "note": ""}, {"id": "1006", "contract": "VN", "l2engineer": "Yana SUN", "l1engineer": "Tang Pham, Quang Luu", "ot": "Yes", "qty": "1", "caseNo": "WO20260115015", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "MobiFone", "manufacturer": "HPE", "model": "HPE PROLIANT XL225N GEN10 PLUS 1U NODE CONFIGURE-TO-ORDER SERVER", "serialNumber": "CZ21020D19", "slaLevel": "HWMA 8x5xNBD (L2+Part )", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-15", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Pending", "pendingReason": "waiting sends part to customer", "symptom": "Disk was not detected fully enough", "partReplaced": "P35734-001", "partQty": "1.0", "actionPlan": "Request customer update firmware for RAID controller to version 7.81", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Bang", "contactPerson": "Mr Bang", "note": "VN expert: 500 USD"}, {"id": "1007", "contract": "VN", "l2engineer": "Yana SUN", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "WO20260115028", "country": "VN", "contractNumber": "DCSS_SVT_21112025", "companyName": "SVTECH", "eu": "Nam A Bank", "manufacturer": "HPE", "model": "844352-B21", "serialNumber": "SGH732T02P", "slaLevel": "HWMA 24x7 (L2+ Replacement Part delivery)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-15", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Uncorrectable Machine Check Exception", "partReplaced": "819412-001", "partQty": "2.0", "actionPlan": "Replace memory DIMM3 PROC1, DIMM8 PROC3", "newPartSN": "RFANRAVTH802Q6, RFANRAVTH802PN", "defectivePartSN": "", "requestBy": "Mr Huy", "contactPerson": "Mr Huy", "note": ""}, {"id": "1008", "contract": "VN", "l2engineer": "Yana SUN", "l1engineer": "Quan Nguyen", "ot": "", "qty": "1", "caseNo": "WO20260120013", "country": "VN", "contractNumber": "DCSS_SVT_10102025", "companyName": "SVTECH", "eu": "VNPT NET", "manufacturer": "HPE", "model": "Q6Q62C", "serialNumber": "DEC34510E8", "slaLevel": "24x7 (L2+4H Part Delivery Hanoi, HCM)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-20", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Pending", "pendingReason": "waiting sends part to customer", "symptom": "Drive slot 1 error", "partReplaced": "834167-001", "partQty": "1.0", "actionPlan": "Replace tape drive 1", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Hieu", "contactPerson": "Mr Hieu", "note": ""}, {"id": "1009", "contract": "VN", "l2engineer": "Guoxu LU", "l1engineer": "Tang Pham, Quang Luu", "ot": "Yes", "qty": "1", "caseNo": "WO20260121026", "country": "VN", "contractNumber": "503.25/VSF-DCSS", "companyName": "VINSMARTFUTURE", "eu": "Vinhome Smart City", "manufacturer": "DELL EMC", "model": "Dell EMC Unity 480", "serialNumber": "CKM00203200235", "slaLevel": "HWMA 24x7 L1+L2+Part", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-21", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Node down", "partReplaced": "", "partQty": "", "actionPlan": "Recovery node", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thao", "contactPerson": "Mr Thao", "note": "HS Expert: 861, 92 USD"}, {"id": "1010", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260122006", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SVTECH", "eu": "VNPT OCS", "manufacturer": "HPE", "model": "HPE DL380 Gen 9", "serialNumber": "CZ291608L4", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-22", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Disk box 1 bay 15 Failed Status", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replace Disk box 1 bay 15", "newPartSN": "06VNRKZB", "defectivePartSN": "", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1011", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260127032", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "HPE", "model": "HPE DL380 Gen 9", "serialNumber": "SGH537Y7CM", "slaLevel": "HWMA 8x5xNBD L2+Part", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-21", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "drive bay 5 failed", "partReplaced": "718291-001", "partQty": "1.0", "actionPlan": "Replace drive bay 5", "newPartSN": "2ST747E8F1", "defectivePartSN": "S3L2LDMT0000M6169JTW", "requestBy": "Mr Hoang", "contactPerson": "Mr Hoang", "note": ""}, {"id": "1012", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260123001", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SVTECH", "eu": "VNPT OCS", "manufacturer": "HPE", "model": "HPE DL380 G9", "serialNumber": "CZ291608L3", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-23", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drive bay 22 failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replace drive bay 22", "newPartSN": "06VNRY4B", "defectivePartSN": "39F0A4P6FF4F", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1013", "contract": "HS", "l2engineer": "Guoxu LU", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "pending", "country": "VN", "contractNumber": "", "companyName": "", "eu": "LG Hai Phong", "manufacturer": "DELL", "model": "MD3860i", "serialNumber": "D4YTZH2", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-27", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Enclosure 0, Drawer 3, Slot 11 Faulty", "partReplaced": "TX8WW", "partQty": "1.0", "actionPlan": "Replace Enclosure 0, Drawer 3, Slot 11", "newPartSN": "K4JSN3KB", "defectivePartSN": "", "requestBy": "Mr Tu", "contactPerson": "Mr Tu", "note": ""}, {"id": "1014", "contract": "HS", "l2engineer": "Guoxu LU", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "pending", "country": "VN", "contractNumber": "", "companyName": "", "eu": "LG Hai Phong", "manufacturer": "DELL", "model": "MD3060e", "serialNumber": "DNC20H2", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-27", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Enclosure 1, Drawer 3, Slot 11 Faulty", "partReplaced": "TX8WW", "partQty": "1.0", "actionPlan": "Replace Enclosure 1, Drawer 3, Slot 11", "newPartSN": "K4JTLHGB", "defectivePartSN": "", "requestBy": "Mr Tu", "contactPerson": "Mr Tu", "note": ""}, {"id": "1015", "contract": "HS", "l2engineer": "Guoxu LU", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "pending", "country": "VN", "contractNumber": "", "companyName": "", "eu": "LG Hai Phong", "manufacturer": "DELL", "model": "ME4084", "serialNumber": "B9NTFS2", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-27", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Disk 0.35, 0.82, 2.44, 2.60 faulty", "partReplaced": "GKWHPx1, M40THx3", "partQty": "4.0", "actionPlan": "Replace disk 0.35, 0,82, 2.44, 2.60", "newPartSN": "ZA15ETDP, ZA18NYVC, ZA18E675, ZA18NPT6", "defectivePartSN": "", "requestBy": "Mr Tu", "contactPerson": "Mr Tu", "note": ""}, {"id": "1016", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260130003", "country": "VN", "contractNumber": "001 DCSS_MST_HWMA", "companyName": "MST", "eu": "LPB", "manufacturer": "HPE", "model": "3PAR 7200", "serialNumber": "4C14167352", "slaLevel": "24x7x4 (L1+L2+Part)", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-30", "receivedTime": "", "onsiteDate1": "2026-02-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Disk 4:15:0 Failed", "partReplaced": "P03799-001", "partQty": "1.0", "actionPlan": "Replace disk 4:15:0", "newPartSN": "", "defectivePartSN": "WBN3421Q", "requestBy": "Mr. Long", "contactPerson": "Mr Long", "note": ""}, {"id": "1017", "contract": "HS", "l2engineer": "Guoxu LU", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "pending", "country": "VN", "contractNumber": "pending", "companyName": "Dell Global B.V", "eu": "BNPP", "manufacturer": "DELL", "model": "Power Edge R640", "serialNumber": "H0LB9V2", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-13", "receivedTime": "", "onsiteDate1": "2026-01-16", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Disk 1 failed", "partReplaced": "1W7HC", "partQty": "1.0", "actionPlan": "Replace disk 1", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Truc", "contactPerson": "Mr Truc", "note": ""}, {"id": "1018", "contract": "VN", "l2engineer": "Yana SUN", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "WO20260107015", "country": "VN", "contractNumber": "DCSS_SVT_21112025", "companyName": "SV TECHNOLOGIES JSC", "eu": "Nam A Bank", "manufacturer": "", "model": "HPE Synergy Chassis 12000", "serialNumber": "SGH028T4CP", "slaLevel": "HWMA 24x7 (L2+ Replacement Part delivery)", "slaMet": "", "quarter": "I", "month": "Jan", "receivedDate": "2026-01-07", "receivedTime": "", "onsiteDate1": "2026-02-04", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Pending", "pendingReason": "Waiting the customer replacement", "symptom": "Composer2 No Standby Appliance", "partReplaced": "879540-001", "partQty": "1.0", "actionPlan": "Replace Composer2", "newPartSN": "CNX1140CVM", "defectivePartSN": "", "requestBy": "Mr. Huy", "contactPerson": "Mr. Huy", "note": "HS Expert: 1000 RMB"}, {"id": "1019", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260204002", "country": "VN", "contractNumber": "DCSS_MSE_HWMA_12082025", "companyName": "MSE", "eu": "MSB", "manufacturer": "", "model": "HPE SY 620 Gen9 2S-EX CTO Cmpt Mdl", "serialNumber": "SGH751T3S1", "slaLevel": "24x7x4 (L1+L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-03", "receivedTime": "", "onsiteDate1": "2026-02-04", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "MEZZ Card 3 failed", "partReplaced": "782833-001", "partQty": "1.0", "actionPlan": "Replacce MEZZ card", "newPartSN": "PEFAT0ASTAH8BP", "defectivePartSN": "", "requestBy": "Mr Hieu TN tech", "contactPerson": "Mr Hieu", "note": ""}, {"id": "1020", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260210010", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "", "model": "HPE Proliant DL380 Gen 9", "serialNumber": "CZ291608LM", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-10", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drive Box 1 Bay 7 Failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "06VLGZTB", "defectivePartSN": "", "requestBy": "Ms. Dung (SVTECH)", "contactPerson": "Ms. Dung", "note": ""}, {"id": "1021", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209014", "country": "VN", "contractNumber": "DCSS_SS_HWMA_0022025", "companyName": "Sunshine", "eu": "AAC", "manufacturer": "", "model": "IBM X3650 M5", "serialNumber": "J33RCD3", "slaLevel": "24x7 (L2+Part SD)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-09", "receivedTime": "", "onsiteDate1": "2026-02-09", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drvie 3 Failed", "partReplaced": "00WG691", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "S421B72M", "defectivePartSN": "T3E3QFDS", "requestBy": "Mr. The", "contactPerson": "Mr. The", "note": ""}, {"id": "1022", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209022", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1023", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209023", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1024", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209024", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1025", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209025", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1026", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260209026", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1027", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260212027", "country": "VN", "contractNumber": "0225_DCSS_KTD_HWMA", "companyName": "KTD", "eu": "Canadian Solar", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1028", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260213011", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "", "model": "HPE DL380 Gen 9", "serialNumber": "CZ291608L6", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-12", "receivedTime": "", "onsiteDate1": "2026-02-13", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Bay 16 Box 1 Failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "06VNET6B / CZ291608L6", "defectivePartSN": "39F0A4LDFF4F", "requestBy": "mr. thin", "contactPerson": "mr. thin", "note": ""}, {"id": "1029", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260213014", "country": "VN", "contractNumber": "", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTnet", "manufacturer": "", "model": "Unity 880", "serialNumber": "CKM00204300080", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-12", "receivedTime": "", "onsiteDate1": "2026-02-12", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Memory module SP B Memory Module 2 has faulted", "partReplaced": "100-532-602-00", "partQty": "1.0", "actionPlan": "Replace memory slot 2 SPB", "newPartSN": "80AD01173771E62F5F", "defectivePartSN": "80AD01202112F5864A", "requestBy": "Mr.  hai", "contactPerson": "Mr. Hai", "note": ""}, {"id": "1030", "contract": "SG", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260217016", "country": "VN", "contractNumber": "260205-MS1-2973", "companyName": "DCSS Technology Pte Ltd", "eu": "LG Hai Phong", "manufacturer": "", "model": "PE R740xd", "serialNumber": "F8D5DW2", "slaLevel": "8x5xNBD", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-16", "receivedTime": "", "onsiteDate1": "2026-02-24", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Fault detected on drive 10", "partReplaced": "F9NWJ", "partQty": "1.0", "actionPlan": "Replace drive 10", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr.Minh", "contactPerson": "Mr.Minh", "note": ""}, {"id": "1031", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260217014", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "", "model": "HPE Proliant DL380 Gen 9", "serialNumber": "CZ291608LM", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-16", "receivedTime": "", "onsiteDate1": "2026-02-23", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drive Box 1 Bay 3 Failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replace Drive Bay 3", "newPartSN": "06VNJT9B", "defectivePartSN": "", "requestBy": "Mr.Thanh", "contactPerson": "Mr.Thanh", "note": ""}, {"id": "1032", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260223015", "country": "VN", "contractNumber": "DCSS_SVT_10112025", "companyName": "SV TECHNOLOGIES JSC", "eu": "CORONA PHU QUOC", "manufacturer": "", "model": "HPE PROLIANT BL460C GEN10", "serialNumber": "SGH811Y2SD", "slaLevel": "HWMA 24x7 (L2+ part NBD)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-23", "receivedTime": "", "onsiteDate1": "2026-02-24", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Drive Box 1 Bay 1 predictive failure", "partReplaced": "870795-001", "partQty": "1.0", "actionPlan": "Replace Drive Bay 1", "newPartSN": "CN7907EMZR", "defectivePartSN": "", "requestBy": "Mr.Khai", "contactPerson": "Mr.Khai", "note": ""}, {"id": "1033", "contract": "SG", "l2engineer": "Sang Tran", "l1engineer": "Sang Tran", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260224005", "country": "VN", "contractNumber": "251016-MS1-2812", "companyName": "Trinity Clover Consulting Pte Ltd", "eu": "Dell Global B.V / ADG National Investment and Technology Development Corporation / TTC for SAINT-GOBAIN CONSTRUCTION PRODUCTS VIETNAM LIMITED", "manufacturer": "", "model": "POWEREDGE R740", "serialNumber": "1188BW2", "slaLevel": "24x7x4", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-23", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Drive 3 Failed", "partReplaced": "WXPCX", "partQty": "1.0", "actionPlan": "Replace Drive 3", "newPartSN": "Z400ZXZL", "defectivePartSN": "", "requestBy": "Mr. Dinh", "contactPerson": "Mr. Dinh", "note": ""}, {"id": "1034", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226001", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "", "model": "HPE DL380 Gen 9", "serialNumber": "CZ291608LC", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-26", "receivedTime": "", "onsiteDate1": "2026-02-26", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Drive bay 4 failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "06VNG06B", "defectivePartSN": "39F0A357FF4F", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1035", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226025", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1036", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226024", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1037", "contract": "VN", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226023", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1038", "contract": "VN", "l2engineer": "Quan Nguyen", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260226022", "country": "VN", "contractNumber": "0215_DCSS_PHUC THANH", "companyName": "PHUC THANH", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1039", "contract": "SG", "l2engineer": "Sang Tran", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260224017", "country": "VN", "contractNumber": "", "companyName": "Trinity Clover Consulting Pte Ltd", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1040", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260302002", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "HPE", "model": "HPE DL380 G9", "serialNumber": "CZ291608L4", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-27", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "Closed", "pendingReason": "", "symptom": "Drive bay 16 failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "39F0A3RTFF4F", "requestBy": "Ms Dung", "contactPerson": "Ms Dung", "note": ""}, {"id": "1041", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228003", "country": "VN", "contractNumber": "DCSS_SVT_05122025", "companyName": "SV TECHNOLOGIES JSC", "eu": "Unitel", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00202002279", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 1 2 Disk 24 has failed", "partReplaced": "005053155", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "6190A1JDFQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1042", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228004", "country": "VN", "contractNumber": "DCSS_SVT_05122025", "companyName": "SV TECHNOLOGIES JSC", "eu": "Unitel", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM01212405832", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 0 0 Disk 11 has failed", "partReplaced": "", "partQty": "", "actionPlan": "out of scope, not support", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1043", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228005", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300071", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 1 1 Disk 21 has failed", "partReplaced": "005053154", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "80X0A0C5FQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1044", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228006", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300071", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 1 2 Disk 24 has failed", "partReplaced": "005053154", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "80H0A1XCFQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1045", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228007", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300071", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 1 3 Disk 11 has failed", "partReplaced": "005053154", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "90D0A04XFQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1046", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228008", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300076", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 0 4 Disk 1 has failed", "partReplaced": "005053154", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "80P0A15PFQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1047", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260228009", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SV TECHNOLOGIES JSC", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300076", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Feb", "receivedDate": "2026-02-28", "receivedTime": "", "onsiteDate1": "2026-03-02", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "DAE 1 2 Disk 8 has failed", "partReplaced": "005053154", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "80H0A295FQGG", "requestBy": "Mr Thanh", "contactPerson": "Mr Thanh", "note": ""}, {"id": "1048", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260304036", "country": "VN", "contractNumber": "451.24/HĐDV/VINITIS-DCSS", "companyName": "VINITIS", "eu": "VINITIS", "manufacturer": "HPE", "model": "DL380 G10", "serialNumber": "SGH904YCG6", "slaLevel": "24x7x4(L1+L2+Part 4H)", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-04", "receivedTime": "10:52", "onsiteDate1": "2026-03-04", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Health check", "partReplaced": "", "partQty": "", "actionPlan": "Health check", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thuc", "contactPerson": "Mr Thuc", "note": ""}, {"id": "1049", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260304035", "country": "VN", "contractNumber": "451.24/HĐDV/VINITIS-DCSS", "companyName": "VINITIS", "eu": "VINITIS", "manufacturer": "HPE", "model": "DL380 G10", "serialNumber": "SGH904YCG4", "slaLevel": "24x7x4(L1+L2+Part 4H)", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-04", "receivedTime": "10:52", "onsiteDate1": "2026-03-04", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Health check", "partReplaced": "", "partQty": "", "actionPlan": "Health check", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thuc", "contactPerson": "Mr Thuc", "note": ""}, {"id": "1050", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260304037", "country": "VN", "contractNumber": "451.24/HĐDV/VINITIS-DCSS", "companyName": "VINITIS", "eu": "VINITIS", "manufacturer": "HPE", "model": "DL380 G10", "serialNumber": "SGH904YFZY", "slaLevel": "24x7x4(L1+L2+Part 4H)", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-04", "receivedTime": "10:52", "onsiteDate1": "2026-03-04", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Health check", "partReplaced": "", "partQty": "", "actionPlan": "Health check", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thuc", "contactPerson": "Mr Thuc", "note": ""}, {"id": "1051", "contract": "HS", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260304041", "country": "VN", "contractNumber": "240307-MS1-2061", "companyName": "", "eu": "LG DISPLAY VIETNAM", "manufacturer": "DELL", "model": "MD3860I", "serialNumber": "D4YTZH2", "slaLevel": "8x5xNBD", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-04", "receivedTime": "14:31", "onsiteDate1": "2026-03-09", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Physical Disk at Enclosure 1, Drawer 2, Slot 5 failed", "partReplaced": "TX8WW", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr. Minh", "contactPerson": "Mr Tu", "note": ""}, {"id": "1052", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260306010", "country": "VN", "contractNumber": "DCSS_TTNS_MA_0012026", "companyName": "TTNS", "eu": "NXBQĐ", "manufacturer": "Fujitsu", "model": "Rx2540 M4", "serialNumber": "MA6D011369", "slaLevel": "", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-06", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "PSU 2 Failed", "partReplaced": "S26113-E574-V53", "partQty": "1.0", "actionPlan": "replace PSU", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1053", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260310003", "country": "VN", "contractNumber": "DCSS_SVT_15042025/01", "companyName": "SV TECHNOLOGIES JSC", "eu": "VNPT OCS", "manufacturer": "HPE", "model": "DL380 G9", "serialNumber": "CZ291608LJ", "slaLevel": "24x7x4 (L2+Part)", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-10", "receivedTime": "08:14", "onsiteDate1": "2026-03-10", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Drive BAY 10 failed", "partReplaced": "872737-001", "partQty": "1.0", "actionPlan": "Replacce Hard Disk Drive", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1054", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260310005", "country": "VN", "contractNumber": "DCSS_SVT_01082025", "companyName": "SVTECH", "eu": "ERICSSON", "manufacturer": "HPE", "model": "DL380 G10", "serialNumber": "CZ21290H21", "slaLevel": "24x7x4 (L2+Part)+Update firmware", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-10", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "CPU 1 failed", "partReplaced": "P11619-001", "partQty": "1.0", "actionPlan": "Replace CPU", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1055", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "y", "qty": "1", "caseNo": "VNDCSUKNWO20260310012", "country": "VN", "contractNumber": "DCSS_SVT_10022026", "companyName": "SVTECH", "eu": "VTNET", "manufacturer": "DELL", "model": "Unity 880", "serialNumber": "CKM00204300073", "slaLevel": "SP B Memory Module 4 has faulted", "slaMet": "Yes", "quarter": "1", "month": "Mar", "receivedDate": "2026-03-10", "receivedTime": "09:57", "onsiteDate1": "2026-03-10", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "P B Memory Module 4 has faulted", "partReplaced": "100-532-602-00", "partQty": "1.0", "actionPlan": "replace Memory", "newPartSN": "", "defectivePartSN": "", "requestBy": "Mr Thin", "contactPerson": "Mr Thin", "note": ""}, {"id": "1056", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260311016", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "CZ291608LR", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1057", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260311017", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "CKM00204300075", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1058", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260311018", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "CKM00204300075", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1059", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260311019", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "CKM00204300075", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1060", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260313013", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "CKM00204300081", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1061", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260317015", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1062", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260317016", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1063", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260317026", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1064", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260318029", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1065", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260318030", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1066", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260318031", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1067", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260318032", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1068", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260319003", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1069", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260319008", "country": "VN", "contractNumber": "", "companyName": "", "eu": "", "manufacturer": "", "model": "", "serialNumber": "", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1070", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260318035", "country": "VN", "contractNumber": "", "companyName": "", "eu": "LG DISPLAY VIETNAM", "manufacturer": "DELL", "model": "ME4084", "serialNumber": "B9NTFS2", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "2026-03-18", "receivedTime": "", "onsiteDate1": "2026-03-19", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Disk at slot 1.52 is failed", "partReplaced": "VFP4M (Alternative PN: M40TH/ GKWHP)", "partQty": "1.0", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1071", "contract": "VN", "l2engineer": "Tang Pham", "l1engineer": "Quang Luu", "ot": "", "qty": "1", "caseNo": "VNDCSUKNWO20260319018", "country": "VN", "contractNumber": "", "companyName": "", "eu": "LG DISPLAY VIETNAM", "manufacturer": "DELL", "model": "R730", "serialNumber": "H40TZH2", "slaLevel": "", "slaMet": "", "quarter": "", "month": "", "receivedDate": "2026-03-19", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Health check", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}, {"id": "1072", "contract": "VN", "l2engineer": "Qiang LI", "l1engineer": "Tang Pham", "ot": "", "qty": "1", "caseNo": "WO20260317067", "country": "VN", "contractNumber": "", "companyName": "IBM", "eu": "MOF", "manufacturer": "DELL", "model": "P580N", "serialNumber": "HSRGSK3", "slaLevel": "", "slaMet": "Yes", "quarter": "I", "month": "Mar", "receivedDate": "2026-03-17", "receivedTime": "", "onsiteDate1": "", "onsiteTime1": "", "onsiteDate2": "", "onsiteTime2": "", "caseStatus": "", "pendingReason": "", "symptom": "Fatal error", "partReplaced": "", "partQty": "", "actionPlan": "", "newPartSN": "", "defectivePartSN": "", "requestBy": "", "contactPerson": "", "note": ""}];
+let storedRaw = localStorage.getItem(STORAGE_KEY);
+let tickets = storedRaw ? JSON.parse(storedRaw) : SEED_DATA;
+if (!storedRaw) { localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_DATA)); }
+
+// ── Google Sheets helpers ────────────────────────────────────
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = msg; el.style.color = color || 'var(--text3)'; }
+}
+function toggleConfig() {
+  const p = document.getElementById('configPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (SHEET_URL) document.getElementById('sheetUrl').value = SHEET_URL;
+  document.getElementById('seedBtn').style.display = SHEET_URL ? 'inline-flex' : 'none';
+}
+async function connectSheet() {
+  const url = document.getElementById('sheetUrl').value.trim();
+  if (!url || !url.includes('script.google.com')) {
+    document.getElementById('configMsg').innerHTML = '⚠ URL không hợp lệ. Cần dạng https://script.google.com/macros/s/.../exec';
+    return;
+  }
+  document.getElementById('configMsg').textContent = '⏳ Đang kết nối...';
+  try {
+    const data = await sheetGet(url);
+    SHEET_URL = url;
+    localStorage.setItem(URL_KEY, SHEET_URL);
+    if (data.length > 0) {
+      tickets = data;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    }
+    document.getElementById('configMsg').innerHTML = '✅ Kết nối thành công! Đã tải ' + data.length + ' tickets từ Google Sheet.';
+    document.getElementById('seedBtn').style.display = 'inline-flex';
+    setSyncStatus('🟢 Sheet connected', 'var(--accent2)');
+    renderTable();
+  } catch(e) {
+    document.getElementById('configMsg').innerHTML = '❌ Lỗi: ' + e.message;
+  }
+}
+async function pushSeedToSheet() {
+  if (!SHEET_URL) return;
+  if (!confirm('Push toàn bộ ' + tickets.length + ' tickets hiện tại lên Google Sheet? Data cũ trên Sheet sẽ bị ghi đè.')) return;
+  document.getElementById('configMsg').textContent = '⏳ Đang push dữ liệu...';
+  try {
+    await sheetPost({ action: 'seed', data: tickets });
+    document.getElementById('configMsg').innerHTML = '✅ Đã push ' + tickets.length + ' tickets lên Google Sheet thành công!';
+  } catch(e) {
+    document.getElementById('configMsg').innerHTML = '❌ Lỗi: ' + e.message;
+  }
+}
+function disconnectSheet() {
+  SHEET_URL = '';
+  localStorage.removeItem(URL_KEY);
+  document.getElementById('sheetUrl').value = '';
+  document.getElementById('seedBtn').style.display = 'none';
+  document.getElementById('configMsg').textContent = 'Đã ngắt kết nối. App đang dùng localStorage.';
+  setSyncStatus('', '');
+}
+// ── CORS-safe fetch helpers ──────────────────────────────────
+// GET via JSONP callback (bypasses CORS for reads)
+function sheetGet(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      delete window[cbName]; script.remove();
+      reject(new Error('Timeout — kiểm tra lại URL hoặc quyền truy cập'));
+    }, 12000);
+    window[cbName] = (json) => {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      if (json.ok) resolve(json.data);
+      else reject(new Error(json.error));
+    };
+    script.src = (url || SHEET_URL) + '?callback=' + cbName + '&t=' + Date.now();
+    script.onerror = () => { clearTimeout(timer); delete window[cbName]; reject(new Error('Script load failed')); };
+    document.head.appendChild(script);
+  });
+}
+// POST via no-cors (fire-and-forget — Sheet gets the data, we don't wait for response)
+function sheetPost(payload) {
+  if (!SHEET_URL) return Promise.resolve();
+  return fetch(SHEET_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(payload)
+  }).catch(() => {}); // swallow network errors silently
+}
+
+async function apiSave(action, ticket) {
+  if (!SHEET_URL) return;
+  setSyncStatus('⏳ Syncing...', 'var(--warn)');
+  await sheetPost({ action, ticket });
+  setSyncStatus('🟢 Synced ' + new Date().toLocaleTimeString(), 'var(--accent2)');
+}
+async function apiDelete(id) {
+  if (!SHEET_URL) return;
+  setSyncStatus('⏳ Syncing...', 'var(--warn)');
+  await sheetPost({ action: 'delete', id });
+  setSyncStatus('🟢 Synced ' + new Date().toLocaleTimeString(), 'var(--accent2)');
+}
+
+// Auto-load from Sheet on startup
+async function autoLoadFromSheet() {
+  if (!SHEET_URL) return;
+  setSyncStatus('⏳ Loading from Sheet...', 'var(--warn)');
+  try {
+    const data = await sheetGet(SHEET_URL);
+    if (data && data.length > 0) {
+      tickets = data;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+      renderTable();
+      setSyncStatus('🟢 Sheet connected · ' + data.length + ' tickets', 'var(--accent2)');
+    } else {
+      setSyncStatus('🟢 Sheet connected (empty)', 'var(--accent2)');
+    }
+  } catch(e) {
+    setSyncStatus('🟡 Offline — dùng local data', 'var(--warn)');
+  }
+}
+setTimeout(autoLoadFromSheet, 500);
+// Show connected status on load
+setSyncStatus('🟢 Sheet connected', 'var(--accent2)');
+// Auto-save URL to localStorage if not already set
+if (!localStorage.getItem(URL_KEY)) localStorage.setItem(URL_KEY, SHEET_URL);
+let editingId = null;
+let deletingId = null;
+let currentPage = 1;
+let PAGE_SIZE = 50;
+
+function formatDate(val) {
+  if (!val || val === '—') return '—';
+  // Handle "Tue Jan 13 2026 00:00:00 GMT+0700..." style strings
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets)); }
+
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const fStatus = document.getElementById('filterStatus').value;
+  const fContract = document.getElementById('filterContract').value;
+  const fMonth = document.getElementById('filterMonth').value;
+  const fSLA = document.getElementById('filterSLA').value;
+
+  // Show/hide clear button
+  const hasFilter = q || fStatus || fContract || fMonth || fSLA;
+  const btn = document.getElementById('clearFilterBtn');
+  if (btn) btn.style.display = hasFilter ? 'inline-flex' : 'none';
+
+  return tickets.filter(t => {
+    if (q && !JSON.stringify(t).toLowerCase().includes(q)) return false;
+    if (fStatus && t.caseStatus !== fStatus) return false;
+    if (fContract && t.contract !== fContract) return false;
+    if (fMonth && t.month !== fMonth) return false;
+    if (fSLA && t.slaMet !== fSLA) return false;
+    return true;
+  });
+}
+
+function renderStats() {
+  const total = tickets.length;
+  const closed = tickets.filter(t => t.caseStatus === 'Closed').length;
+  const pending = tickets.filter(t => t.caseStatus === 'Pending').length;
+  const slaMet = tickets.filter(t => t.slaMet === 'Yes').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-chip"><span class="num">${total}</span><span class="lbl">Total Tickets</span></div>
+    <div class="stat-chip stat-closed"><span class="num">${closed}</span><span class="lbl">Closed</span></div>
+    <div class="stat-chip stat-pending"><span class="num">${pending}</span><span class="lbl">Pending</span></div>
+    <div class="stat-chip stat-sla"><span class="num">${total ? Math.round(slaMet/total*100) : 0}%</span><span class="lbl">SLA Met</span></div>
+  `;
+}
+
+function contractBadge(v) {
+  const cls = v === 'VN' ? 'badge-vn' : v === 'HS' ? 'badge-hs' : 'badge-sg';
+  return `<span class="badge ${cls}">${v||'—'}</span>`;
+}
+function statusBadge(v) {
+  return `<span class="badge ${v==='Closed'?'badge-closed':'badge-pending'}">${v||'—'}</span>`;
+}
+function slaBadge(v) {
+  if (!v) return '<span style="color:var(--text3)">—</span>';
+  return `<span class="badge ${v==='Yes'?'badge-yes':'badge-no'}">${v}</span>`;
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > pages) currentPage = pages;
+  const slice = filtered.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  const tbody = document.getElementById('tableBody');
+  if (!slice.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="16">No tickets found</td></tr>';
+  } else {
+    tbody.innerHTML = slice.map((t, i) => `
+      <tr>
+        <td class="td-mono">${(currentPage-1)*PAGE_SIZE+i+1}</td>
+        <td class="td-mono" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${t.caseNo||'—'}</td>
+        <td>${contractBadge(t.contract)}</td>
+        <td>${t.l2engineer||'<span class="td-dim">—</span>'}</td>
+        <td>${t.l1engineer||'<span class="td-dim">—</span>'}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${t.companyName||'—'}</td>
+        <td>${t.country||'—'}</td>
+        <td>${t.manufacturer||'<span class="td-dim">—</span>'}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${t.model||'<span class="td-dim">—</span>'}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">${t.slaLevel||'—'}</td>
+        <td>${slaBadge(t.slaMet)}</td>
+        <td>${t.month||'—'}</td>
+        <td style="color:var(--text2)">${formatDate(t.receivedDate)}</td>
+        <td>${statusBadge(t.caseStatus)}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">${t.symptom||'—'}</td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-ghost btn-sm" onclick="viewTicket('${t.id}')">View</button>
+            <button class="btn btn-warn btn-sm" onclick="editTicket('${t.id}')">Edit</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Pagination
+  const pg = document.getElementById('pagination');
+  pg.innerHTML = total > PAGE_SIZE ? `
+    <span class="pg-info">${total} tickets | Page ${currentPage} / ${pages}</span>
+    <button class="pg-btn" onclick="changePage(-1)" ${currentPage===1?'disabled':''}>← Prev</button>
+    <button class="pg-btn" onclick="changePage(1)" ${currentPage===pages?'disabled':''}>Next →</button>
+  ` : `<span class="pg-info">${total} ticket${total!==1?'s':''}</span>`;
+
+  renderStats();
+}
+
+function clearAllFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterContract').value = '';
+  document.getElementById('filterMonth').value = '';
+  document.getElementById('filterSLA').value = '';
+  currentPage = 1;
+  renderTable();
+}
+
+function changePage(d) { currentPage += d; renderTable(); }
+function changePageSize() { PAGE_SIZE = parseInt(document.getElementById('pageSizeSel').value); currentPage = 1; renderTable(); }
+
+/* FORM */
+function openForm(ticket = null) {
+  editingId = ticket ? ticket.id : null;
+  const form = document.getElementById('ticketForm');
+  form.reset();
+  document.getElementById('formModalTitle').textContent = ticket ? 'Edit Ticket' : 'New Ticket';
+  document.getElementById('formModalIcon').textContent = ticket ? '✏️' : '📋';
+  document.getElementById('submitBtn').textContent = ticket ? 'Update Ticket' : 'Save Ticket';
+  if (ticket) {
+    Object.keys(ticket).forEach(k => {
+      const el = form.elements[k];
+      if (el) el.value = ticket[k] || '';
+    });
+  }
+  document.getElementById('formModal').style.display = 'flex';
+}
+
+function saveTicket(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = { id: editingId || Date.now().toString() };
+  ['contract','l2engineer','l1engineer','ot','qty','caseNo','country','contractNumber',
+   'companyName','eu','manufacturer','model','serialNumber','slaLevel','slaMet','quarter',
+   'month','receivedDate','receivedTime','onsiteDate1','onsiteTime1','onsiteDate2','onsiteTime2',
+   'caseStatus','pendingReason','symptom','partReplaced','partQty','actionPlan',
+   'newPartSN','defectivePartSN','requestBy','contactPerson','note'
+  ].forEach(k => { const el = form.elements[k]; if (el) data[k] = el.value; });
+
+  if (editingId) {
+    const idx = tickets.findIndex(t => t.id === editingId);
+    if (idx !== -1) tickets[idx] = data;
+    apiSave('update', data);
+    logAction('update', 'Sửa ticket: ' + (data.caseNo||'N/A') + ' — ' + (data.companyName||''));
+  } else {
+    tickets.unshift(data);
+    apiSave('create', data);
+    logAction('create', 'Tạo ticket: ' + (data.caseNo||'N/A') + ' — ' + (data.companyName||''));
+  }
+  save(); closeModal('formModal'); renderTable();
+}
+
+/* VIEW */
+function viewTicket(id) {
+  const t = tickets.find(t => t.id === id);
+  if (!t) return;
+  const rows = [
+    ['Contract', contractBadge(t.contract)], ['Case No', `<span class="td-mono">${t.caseNo||'—'}</span>`],
+    ['L2 Engineer', t.l2engineer||'—'], ['L1 Engineer', t.l1engineer||'—'],
+    ['OT', t.ot||'—'], ['Qty', t.qty||'—'],
+    ['Country', t.country||'—'], ['Contract Number', t.contractNumber||'—'],
+    ['Company Name', t.companyName||'—'], ['EU', t.eu||'—'],
+    ['Manufacturer', t.manufacturer||'—'], ['Model', t.model||'—'],
+    ['Serial Number', t.serialNumber||'—'], ['SLA Level', t.slaLevel||'—'],
+    ['SLA Met', slaBadge(t.slaMet)], ['Quarter', t.quarter||'—'],
+    ['Month', t.month||'—'], ['Received Date', formatDate(t.receivedDate)],
+    ['Received Time', t.receivedTime||'—'], ['Onsite Date 1st', formatDate(t.onsiteDate1)],
+    ['Onsite Time 1st', t.onsiteTime1||'—'], ['Onsite Date 2nd', formatDate(t.onsiteDate2)],
+    ['Onsite Time 2nd', t.onsiteTime2||'—'], ['Case Status', statusBadge(t.caseStatus)],
+    ['Pending Reason', t.pendingReason||'—'], ['Part Replaced', t.partReplaced||'—'],
+    ['Part Qty', t.partQty||'—'], ['New Part SN', t.newPartSN||'—'],
+    ['Defective Part SN', t.defectivePartSN||'—'], ['Request By', t.requestBy||'—'],
+    ['Contact Person', t.contactPerson||'—'],
+  ];
+  const longRows = [
+    ['Symptom', t.symptom||'—'], ['Action Plan', t.actionPlan||'—'], ['Note', t.note||'—'],
+  ];
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-grid" style="margin-bottom:12px">
+      ${rows.map(([l,v]) => `<div class="detail-item"><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`).join('')}
+    </div>
+    ${longRows.map(([l,v]) => `<div class="detail-item" style="margin-bottom:8px"><div class="detail-label">${l}</div><div class="detail-value" style="white-space:pre-wrap">${v}</div></div>`).join('')}
+  `;
+  document.getElementById('detailEditBtn').onclick = () => { closeModal('detailModal'); editTicket(id); };
+  document.getElementById('detailDeleteBtn').onclick = () => { closeModal('detailModal'); confirmDelete(id); };
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function editTicket(id) {
+  const t = tickets.find(t => t.id === id);
+  if (t) openForm(t);
+}
+
+function confirmDelete(id) {
+  deletingId = id;
+  document.getElementById('confirmDeleteBtn').onclick = () => {
+    const del = tickets.find(t => t.id === deletingId);
+    logAction('delete', 'Xóa ticket: ' + (del && del.caseNo||deletingId) + ' — ' + (del && del.companyName||''));
+    apiDelete(deletingId);
+    tickets = tickets.filter(t => t.id !== deletingId);
+    save(); closeModal('deleteModal'); renderTable();
+  };
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+
+/* MODALS */
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function closeIfOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+/* IMPORT */
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be re-imported
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      // Try sheet named 'CSR' first, otherwise use first sheet
+      const sheetName = wb.SheetNames.includes('CSR') ? 'CSR' : wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (!rows.length) { alert('File trống hoặc không đọc được dữ liệu.'); return; }
+
+      // Column mapping: Excel header → internal key
+      const MAP = {
+        'id': 'id',
+        'item no': 'itemNo',
+        'vn/hs/sg contract': 'contract', 'contract': 'contract',
+        'l2 engineer': 'l2engineer', 'l2engineer': 'l2engineer',
+        'l1 engineer': 'l1engineer', 'l1engineer': 'l1engineer',
+        'ot': 'ot',
+        'qty': 'qty',
+        'case no': 'caseNo', 'caseno': 'caseNo',
+        'country': 'country',
+        'contract number': 'contractNumber', 'contractnumber': 'contractNumber',
+        'company name': 'companyName', 'companyname': 'companyName',
+        'eu': 'eu',
+        'manufacturer': 'manufacturer',
+        'model': 'model',
+        'serial number or service tag': 'serialNumber', 'serialnumber': 'serialNumber', 'serial number': 'serialNumber',
+        'sla level': 'slaLevel', 'slalevel': 'slaLevel',
+        'sla met?': 'slaMet', 'sla met': 'slaMet', 'slamet': 'slaMet', 'slamet?': 'slaMet',
+        'quarter': 'quarter',
+        'month': 'month',
+        'call req_received date': 'receivedDate', 'receiveddate': 'receivedDate', 'call req received date': 'receivedDate',
+        'call receive time': 'receivedTime', 'receivedtime': 'receivedTime',
+        'onsite date/sending part date (1st batch)': 'onsiteDate1', 'onsite date 1st batch': 'onsiteDate1', 'onsitedate1': 'onsiteDate1',
+        'onsite time/sending part time (1st batch)': 'onsiteTime1', 'onsite time 1st batch': 'onsiteTime1', 'onsitetime1': 'onsiteTime1',
+        'onsite date/sending part date (2nd batch)': 'onsiteDate2', 'onsite date 2nd batch': 'onsiteDate2', 'onsitedate2': 'onsiteDate2',
+        'onsite time/sending part time (2nd batch)': 'onsiteTime2', 'onsite time 2nd batch': 'onsiteTime2', 'onsitetime2': 'onsiteTime2',
+        // Case Status — nhiều variant do Excel lưu newline khác nhau
+        'case status': 'caseStatus', 'casestatus': 'caseStatus',
+        'case status(closed / pending)': 'caseStatus',
+        'case status (closed / pending)': 'caseStatus',
+        // Case Pending Reason
+        'case pending reason': 'pendingReason', 'pendingreason': 'pendingReason', 'case pendingreason': 'pendingReason',
+        'symptom': 'symptom',
+        // Part Replaced — nhiều variant trailing space
+        'part replaced': 'partReplaced', 'partreplaced': 'partReplaced',
+        'part qty': 'partQty', 'partqty': 'partQty', 'part qty.': 'partQty',
+        'action plan': 'actionPlan', 'actionplan': 'actionPlan',
+        'new part sn': 'newPartSN', 'newpartsn': 'newPartSN',
+        'defective part sn': 'defectivePartSN', 'defectivepartsn': 'defectivePartSN',
+        'request by': 'requestBy', 'requestby': 'requestBy',
+        'contact person': 'contactPerson', 'contactperson': 'contactPerson',
+        'note': 'note',
+      };
+
+      // Normalize column name: lowercase, collapse whitespace/newlines, trim
+      function normalizeCol(col) {
+        return String(col)
+          .replace(/[\r\n\t]+/g, ' ')   // replace newlines/tabs with space
+          .replace(/\s+/g, ' ')          // collapse multiple spaces
+          .trim()
+          .toLowerCase();
+      }
+
+      function lookupKey(col) {
+        const norm = normalizeCol(col);
+        return MAP[norm] || null;
+      }
+
+      function cleanDate(val) {
+        if (!val) return '';
+        if (val instanceof Date) {
+          const y = val.getFullYear(), m = String(val.getMonth()+1).padStart(2,'0'), d = String(val.getDate()).padStart(2,'0');
+          return `${y}-${m}-${d}`;
+        }
+        const s = String(val).trim();
+        if (s === '' || s === 'NaT' || s === 'nan') return '';
+        // Already formatted date string
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+        // Try parsing
+        const d = new Date(s);
+        if (!isNaN(d)) {
+          const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), dy = String(d.getDate()).padStart(2,'0');
+          return `${y}-${mo}-${dy}`;
+        }
+        return s;
+      }
+
+      function cleanVal(key, val) {
+        if (val === null || val === undefined) return '';
+        const s = String(val).trim();
+        if (s === '' || s === 'nan' || s === 'NaT' || s === 'None') return '';
+        // Date fields
+        if (['receivedDate','onsiteDate1','onsiteDate2'].includes(key)) return cleanDate(val);
+        // Status normalize — handle any casing
+        if (key === 'caseStatus') {
+          const l = s.toLowerCase();
+          if (l === 'closed') return 'Closed';
+          if (l.startsWith('pending') || l === 'open') return 'Pending';
+          return ''; // ignore unknown values
+        }
+        // Part Replaced — strip Excel number formatting artifacts like "1.0"
+        if (key === 'partQty') {
+          const n = parseFloat(s);
+          return isNaN(n) ? s : String(n % 1 === 0 ? Math.round(n) : n);
+        }
+        return s;
+      }
+
+      const imported = rows.map((row, i) => {
+        const ticket = { id: Date.now().toString() + '_' + i };
+        Object.entries(row).forEach(([col, val]) => {
+          const key = lookupKey(col);
+          if (key) ticket[key] = cleanVal(key, val);
+        });
+        return ticket;
+      }).filter(t => t.caseNo || t.companyName || t.serialNumber); // skip empty rows
+
+      if (!imported.length) { alert('Không tìm thấy dữ liệu hợp lệ trong file.'); return; }
+
+      // Ask user: merge+update or replace
+      const choice = confirm(
+        `Tìm thấy ${imported.length} tickets trong file "${file.name}".\n\n` +
+        `• OK → Merge: cập nhật ticket đã có + thêm ticket mới\n` +
+        `• Cancel → Thay thế toàn bộ bằng data mới`
+      );
+
+      if (choice) {
+        // Build map of existing tickets by caseNo
+        const existingMap = {};
+        tickets.forEach(t => { if (t.caseNo) existingMap[t.caseNo] = t; });
+
+        let updated = 0, added = 0;
+        imported.forEach(imp => {
+          if (imp.caseNo && existingMap[imp.caseNo]) {
+            // UPDATE existing ticket: ghi đè tất cả field từ Excel (giữ id gốc)
+            const existing = existingMap[imp.caseNo];
+            const originalId = existing.id;
+            Object.keys(imp).forEach(k => {
+              if (k === 'id') return; // giữ id gốc
+              existing[k] = imp[k]; // ghi đè kể cả field rỗng
+            });
+            existing.id = originalId;
+            updated++;
+          } else {
+            // ADD new ticket
+            tickets.unshift(imp);
+            if (imp.caseNo) existingMap[imp.caseNo] = imp;
+            added++;
+          }
+        });
+        alert(`✅ Import hoàn tất!\n• Cập nhật: ${updated} tickets\n• Thêm mới: ${added} tickets`);
+        logAction('import', `Import merge từ ${file.name}: cập nhật ${updated}, thêm mới ${added}`);
+      } else {
+        tickets = imported;
+        alert(`✅ Đã thay thế toàn bộ bằng ${imported.length} tickets từ file.`);
+        logAction('import', `Import replace từ ${file.name}: ${imported.length} tickets`);
+      }
+
+      save();
+      currentPage = 1;
+      renderTable();
+
+      // Sync to Sheet if connected
+      if (SHEET_URL) {
+        sheetPost({ action: 'seed', data: tickets });
+        setSyncStatus('⏳ Syncing to Sheet...', 'var(--warn)');
+        setTimeout(() => setSyncStatus('🟢 Synced ' + new Date().toLocaleTimeString(), 'var(--accent2)'), 2000);
+      }
+
+    } catch(err) {
+      alert('❌ Lỗi đọc file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* EXPORT */
+function exportExcel() {
+  const cols = [
+    'Item No','VN/HS/SG contract','L2 engineer','L1 engineer','OT','Qty','Case No','Country',
+    'Contract number','Company Name','EU','Manufacturer','Model','Serial Number or Service Tag',
+    'SLA Level','SLA Met?','Quarter','Month','Call Req_Received Date','Call Receive time',
+    'Onsite Date 1st batch','Onsite Time 1st batch','Onsite Date 2nd batch','Onsite Time 2nd batch',
+    'Case Status','Case Pending Reason','Symptom','Part Replaced','Part qty','Action Plan',
+    'New part SN','Defective part SN','Request by','Contact Person','Note'
+  ];
+  const keys = [
+    null,'contract','l2engineer','l1engineer','ot','qty','caseNo','country',
+    'contractNumber','companyName','eu','manufacturer','model','serialNumber',
+    'slaLevel','slaMet','quarter','month','receivedDate','receivedTime',
+    'onsiteDate1','onsiteTime1','onsiteDate2','onsiteTime2',
+    'caseStatus','pendingReason','symptom','partReplaced','partQty','actionPlan',
+    'newPartSN','defectivePartSN','requestBy','contactPerson','note'
+  ];
+  const rows = tickets.map((t, i) => {
+    const row = {};
+    cols.forEach((col, ci) => { row[col] = keys[ci] === null ? i+1 : (t[keys[ci]] || ''); });
+    return row;
+  });
+  const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CSR');
+  XLSX.writeFile(wb, `DCSS_Ticket_Support_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ======================== DASHBOARD ======================== */
+let activePeriod = 'month';
+let partsSortKey = 'totalQty';
+let partsSortDir = -1; // -1 = desc
+let reorderPlan = JSON.parse(localStorage.getItem('dcss_reorder') || '{}');
+let chartEngineerInst = null;
+let chartMfrInst = null;
+
+function switchTab(tab) {
+  document.getElementById('panelTickets').classList.toggle('active', tab === 'tickets');
+  document.getElementById('panelDashboard').classList.toggle('active', tab === 'dashboard');
+  document.getElementById('tabTickets').classList.toggle('active', tab === 'tickets');
+  document.getElementById('tabDashboard').classList.toggle('active', tab === 'dashboard');
+  if (tab === 'dashboard') renderDashboard();
+}
+
+function setPeriod(btn, p) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activePeriod = p;
+  renderDashboard();
+}
+
+function getPeriodKey(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  if (activePeriod === 'week') {
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+    return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+  }
+  if (activePeriod === 'month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  if (activePeriod === 'quarter') return `${d.getFullYear()}-Q${Math.ceil((d.getMonth()+1)/3)}`;
+  if (activePeriod === 'year') return `${d.getFullYear()}`;
+  return null;
+}
+
+function renderDashboard() {
+  renderKpis();
+  renderEngineerChart();
+  renderMfrChart();
+  renderEngSummary();
+  renderPartsTable();
+}
+
+function renderKpis() {
+  const t = tickets;
+  const withParts = t.filter(x => x.partReplaced && x.partReplaced.trim());
+  const totalPartQty = t.reduce((s,x) => s + (parseFloat(x.partQty)||0), 0);
+  const uniqueParts = new Set(t.filter(x=>x.partReplaced).map(x=>x.partReplaced.trim().toUpperCase())).size;
+  const engineers = new Set([...t.map(x=>x.l2engineer), ...t.map(x=>x.l1engineer)].filter(Boolean)).size;
+  document.getElementById('dashKpis').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total Tickets</div><div class="kpi-value">${t.length}</div><div class="kpi-sub">all time</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Parts Replaced</div><div class="kpi-value">${withParts.length}</div><div class="kpi-sub">${Math.round(withParts.length/t.length*100)||0}% of tickets</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">Total Part Qty</div><div class="kpi-value">${totalPartQty}</div><div class="kpi-sub">${uniqueParts} unique part numbers</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Engineers Active</div><div class="kpi-value">${engineers}</div><div class="kpi-sub">L1 + L2 combined</div></div>
+  `;
+}
+
+const ENG_COLORS = [
+  '#0057b8','#00a86b','#e67e00','#d32f2f','#5c35cc',
+  '#0096c7','#00784a','#003d8a','#c15000','#007a4e'
+];
+
+function renderEngineerChart() {
+  const role = document.getElementById('dashEngineerRole').value; // l2 or l1
+  const field = role === 'l2' ? 'l2engineer' : 'l1engineer';
+
+  // Build period → engineer → count
+  const periodSet = new Set();
+  const engSet = new Set();
+  const map = {};
+  tickets.forEach(t => {
+    const period = getPeriodKey(t.receivedDate);
+    if (!period) return;
+    const engs = t[field] ? t[field].split(',').map(e=>e.trim()).filter(Boolean) : [];
+    engs.forEach(eng => {
+      periodSet.add(period);
+      engSet.add(eng);
+      if (!map[period]) map[period] = {};
+      map[period][eng] = (map[period][eng] || 0) + 1;
+    });
+  });
+
+  const periods = [...periodSet].sort();
+  const engineers = [...engSet].sort();
+
+  const datasets = engineers.map((eng, i) => ({
+    label: eng,
+    data: periods.map(p => map[p]?.[eng] || 0),
+    backgroundColor: ENG_COLORS[i % ENG_COLORS.length] + 'cc',
+    borderColor: ENG_COLORS[i % ENG_COLORS.length],
+    borderWidth: 1, borderRadius: 3,
+  }));
+
+  const ctx = document.getElementById('chartEngineer').getContext('2d');
+  if (chartEngineerInst) chartEngineerInst.destroy();
+  chartEngineerInst = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: periods, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#4a5a7a', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { stacked: false, ticks: { color: '#4a5a7a', font: { size: 10 } }, grid: { color: '#dde3ec' } },
+        y: { ticks: { color: '#4a5a7a', font: { size: 10 } }, grid: { color: '#dde3ec' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderMfrChart() {
+  const counts = {};
+  tickets.forEach(t => {
+    const m = (t.manufacturer||'Unknown').trim() || 'Unknown';
+    counts[m] = (counts[m]||0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const ctx = document.getElementById('chartMfr').getContext('2d');
+  if (chartMfrInst) chartMfrInst.destroy();
+  chartMfrInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(x=>x[0]),
+      datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: ENG_COLORS, borderColor: '#ffffff', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#4a5a7a', font: { size: 11 }, boxWidth: 12 } }
+      }
+    }
+  });
+}
+
+function renderEngSummary() {
+  const counts = {};
+  tickets.forEach(t => {
+    const eng = (t.l2engineer||'').trim() || '—';
+    if (!counts[eng]) counts[eng] = { total:0, closed:0, pending:0 };
+    counts[eng].total++;
+    if (t.caseStatus === 'Closed') counts[eng].closed++;
+    if (t.caseStatus === 'Pending') counts[eng].pending++;
+  });
+  const rows = Object.entries(counts).sort((a,b)=>b[1].total-a[1].total);
+  const max = rows[0]?.[1].total || 1;
+  document.getElementById('engSummaryTable').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr>
+        <th style="text-align:left;padding:6px 8px;color:#4a5a7a;font-family:var(--mono);font-size:10px;text-transform:uppercase;border-bottom:2px solid #dde3ec;background:#001f5b;color:#b3cde8">Engineer</th>
+        <th style="text-align:right;padding:6px 8px;font-family:var(--mono);font-size:10px;text-transform:uppercase;border-bottom:2px solid #dde3ec;background:#001f5b;color:#b3cde8">Total</th>
+        <th style="text-align:right;padding:6px 8px;font-family:var(--mono);font-size:10px;text-transform:uppercase;border-bottom:2px solid #dde3ec;background:#001f5b;color:#b3cde8">Closed</th>
+        <th style="text-align:right;padding:6px 8px;font-family:var(--mono);font-size:10px;text-transform:uppercase;border-bottom:2px solid #dde3ec;background:#001f5b;color:#b3cde8">Pending</th>
+        <th style="padding:6px 8px;border-bottom:2px solid #dde3ec;background:#001f5b"></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(([eng, s]) => `
+          <tr style="border-bottom:1px solid #dde3ec">
+            <td style="padding:7px 8px;font-weight:500">${eng}</td>
+            <td style="padding:7px 8px;text-align:right;font-family:var(--mono);color:var(--accent)">${s.total}</td>
+            <td style="padding:7px 8px;text-align:right;font-family:var(--mono);color:var(--accent2)">${s.closed}</td>
+            <td style="padding:7px 8px;text-align:right;font-family:var(--mono);color:var(--warn)">${s.pending}</td>
+            <td style="padding:7px 8px;min-width:80px">
+              <div class="usage-bar-track"><div class="usage-bar-fill" style="width:${Math.round(s.total/max*100)}%"></div></div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+/* PARTS */
+function buildPartsData() {
+  const map = {};
+
+  // Normalize PN: remove inline qty suffix like "GKWHPx1" → "GKWHP", "M40THx3" → "M40TH"
+  function cleanPN(raw) {
+    return raw
+      .replace(/\s*x\s*\d+$/i, '')   // strip trailing "x1", "x3", "x 2" etc
+      .replace(/\s*\(\s*alternative\s.*\)/i, '') // strip "(Alternative PN: ...)"
+      .trim();
+  }
+
+  // Extract inline qty from PN suffix: "GKWHPx1" → 1, "M40THx3" → 3, else null
+  function inlineQty(raw) {
+    const m = raw.match(/\s*x\s*(\d+)\s*$/i);
+    return m ? parseInt(m[1]) : null;
+  }
+
+  tickets.forEach(t => {
+    if (!t.partReplaced || !t.partReplaced.trim()) return;
+
+    // Split by comma or semicolon — but be careful of "PN (Alternative PN: A/ B)"
+    // Use a smarter split: split only on comma/semicolon NOT inside parentheses
+    const raw = t.partReplaced;
+    const parts = [];
+    let depth = 0, current = '';
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
+      else if ((c === ',' || c === ';') && depth === 0) {
+        if (current.trim()) parts.push(current.trim());
+        current = '';
+        continue;
+      }
+      current += c;
+    }
+    if (current.trim()) parts.push(current.trim());
+
+    const totalTicketQty = parseFloat(t.partQty) || 0;
+    const numParts = parts.length;
+
+    parts.forEach((rawPart, idx) => {
+      const iq  = inlineQty(rawPart);   // qty embedded in PN string
+      const pn  = cleanPN(rawPart);
+      if (!pn) return;
+      const key = pn.toUpperCase();
+
+      // Qty logic:
+      // 1. If inline qty in PN (e.g. "GKWHPx1") → use that
+      // 2. Else if only 1 part → use partQty from ticket
+      // 3. Else multiple parts → divide partQty evenly (or 1 each)
+      let qty;
+      if (iq !== null) {
+        qty = iq;
+      } else if (numParts === 1) {
+        qty = totalTicketQty || 1;
+      } else {
+        qty = totalTicketQty > 0 ? Math.round(totalTicketQty / numParts) || 1 : 1;
+      }
+
+      if (!map[key]) map[key] = {
+        partNo: pn,
+        totalQty: 0,
+        timesUsed: 0,
+        models: new Set(),
+        caseNos: [],
+        lastDate: ''
+      };
+      map[key].totalQty  += qty;
+      map[key].timesUsed++;
+      if (t.model)       map[key].models.add(t.model.trim());
+      if (t.caseNo)      map[key].caseNos.push(t.caseNo);
+      if (t.receivedDate && t.receivedDate > map[key].lastDate) map[key].lastDate = t.receivedDate;
+    });
+  });
+
+  return Object.values(map).map(x => ({ ...x, models: [...x.models] }));
+}
+
+function sortParts(key) {
+  if (partsSortKey === key) partsSortDir *= -1;
+  else { partsSortKey = key; partsSortDir = -1; }
+  document.querySelectorAll('.sort-icon').forEach(el => { el.textContent = '↕'; el.classList.remove('active'); });
+  const si = document.getElementById('si-' + key);
+  if (si) { si.textContent = partsSortDir === -1 ? '↓' : '↑'; si.classList.add('active'); }
+  renderPartsTable();
+}
+
+function renderPartsTable() {
+  let data = buildPartsData();
+  const q = (document.getElementById('partSearch')?.value || '').toLowerCase();
+  if (q) data = data.filter(x => x.partNo.toLowerCase().includes(q) || x.models.some(m=>m.toLowerCase().includes(q)));
+
+  data.sort((a,b) => {
+    let av = a[partsSortKey], bv = b[partsSortKey];
+    if (typeof av === 'string') return av.localeCompare(bv) * partsSortDir;
+    return (av - bv) * partsSortDir;
+  });
+
+  const maxQty = Math.max(...data.map(x=>x.totalQty), 1);
+
+  const getReorderKey = (p) => p.toUpperCase().replace(/\s+/g,'_');
+  const priority = (qty) => qty >= 5 ? ['HIGH','tag-high'] : qty >= 2 ? ['MED','tag-med'] : ['LOW','tag-low'];
+
+  document.getElementById('partsTableBody').innerHTML = data.map(row => {
+    const rk = getReorderKey(row.partNo);
+    const rqty = reorderPlan[rk] || '';
+    const [pLabel, pClass] = priority(row.totalQty);
+    return `
+      <tr>
+        <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent)">${row.partNo}</span></td>
+        <td>
+          <div class="usage-bar">
+            <span style="font-family:var(--mono);font-weight:700;min-width:28px">${row.totalQty}</span>
+            <div class="usage-bar-track"><div class="usage-bar-fill" style="width:${Math.round(row.totalQty/maxQty*100)}%"></div></div>
+          </div>
+        </td>
+        <td style="font-family:var(--mono);color:var(--text2)">${row.timesUsed}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${row.lastDate||'—'}</td>
+        <td style="max-width:200px">
+          ${row.models.slice(0,2).map(m=>`<span style="font-size:10px;color:#4a5a7a;background:#f0f4f8;border:1px solid #dde3ec;border-radius:3px;padding:1px 6px;margin:1px;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle">${m}</span>`).join('')}
+          ${row.models.length > 2 ? `<span style="font-size:10px;color:#8898b0">+${row.models.length-2}</span>` : ''}
+        </td>
+        <td style="max-width:160px;font-size:10px;color:var(--text3)">
+          ${row.caseNos.slice(0,2).join(', ')}${row.caseNos.length>2?` +${row.caseNos.length-2} more`:''}
+        </td>
+        <td>
+          <input class="reorder-input" type="number" min="0" value="${rqty}" placeholder="0"
+            onchange="saveReorder('${rk}', this.value)" title="Set reorder quantity">
+        </td>
+        <td><span class="eng-badge ${pClass}">${pLabel}</span></td>
+      </tr>
+    `;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">No parts data</td></tr>';
+}
+
+function saveReorder(key, val) {
+  reorderPlan[key] = parseInt(val) || 0;
+  localStorage.setItem('dcss_reorder', JSON.stringify(reorderPlan));
+}
+
+function exportReorderPlan() {
+  const data = buildPartsData();
+  const rows = data.map(row => {
+    const rk = row.partNo.toUpperCase().replace(/\s+/g,'_');
+    return {
+      'Part No': row.partNo,
+      'Total Qty Used': row.totalQty,
+      'Times Used': row.timesUsed,
+      'Last Used Date': row.lastDate,
+      'Used In Models': row.models.join('; '),
+      'Associated Cases': row.caseNos.join(', '),
+      'Reorder Qty': reorderPlan[rk] || 0,
+      'Priority': row.totalQty >= 5 ? 'HIGH' : row.totalQty >= 2 ? 'MED' : 'LOW'
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reorder Plan');
+  XLSX.writeFile(wb, `DCSS_Reorder_Plan_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+/* =================== END DASHBOARD =================== */
+
+/* KEYBOARD */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['formModal','detailModal','deleteModal'].forEach(id => {
+      if (document.getElementById(id).style.display !== 'none') closeModal(id);
+    });
+  }
+});
+
+/* ======================== LOGIN & AUDIT ======================== */
+const USERS = [
+  { name: 'Tang Pham',   email: 'tang.pham@dcsstech.com',   avatar: 'TP', admin: false, pwd: 'dcss@tang2026'   },
+  { name: 'Sang Tran',   email: 'sang.tran@dcsstech.com',   avatar: 'ST', admin: false, pwd: 'dcss@sang2026'   },
+  { name: 'Quang Luu',   email: 'quang.luu@dcsstech.com',   avatar: 'QL', admin: false, pwd: 'dcss@quang2026'  },
+  { name: 'Quan Nguyen', email: 'quan.nguyen@dcsstech.com', avatar: 'QN', admin: true,  pwd: 'dcss@quan2026'   },
+];
+const ADMIN_EMAIL = 'quan.nguyen@dcsstech.com';
+const SESSION_KEY = 'dcss_session_v1';
+const AUDIT_KEY   = 'dcss_audit_v1';
+let currentUser   = null;
+let auditLog      = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
+
+function saveAudit() { localStorage.setItem(AUDIT_KEY, JSON.stringify(auditLog)); }
+
+function logAction(action, detail) {
+  if (!currentUser) return;
+  auditLog.unshift({ ts: new Date().toISOString(), user: currentUser.name, email: currentUser.email, action, detail: detail||'' });
+  if (auditLog.length > 2000) auditLog = auditLog.slice(0, 2000);
+  saveAudit();
+}
+
+function initLoginScreen() {
+  // Static select — nothing to render dynamically
+}
+
+function selectUser(email) {
+  document.getElementById('loginEmail').value = email;
+  if (email) document.getElementById('loginPwd').focus();
+}
+
+function togglePwd() {
+  const inp = document.getElementById('loginPwd');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pwd   = document.getElementById('loginPwd').value;
+  const errEl = document.getElementById('loginError');
+  if (!email) { errEl.textContent='Vui lòng chọn hoặc nhập email.'; errEl.style.display='block'; return; }
+  if (!pwd)   { errEl.textContent='Vui lòng nhập mật khẩu.'; errEl.style.display='block'; return; }
+  const user = USERS.find(u => u.email.toLowerCase()===email);
+  if (!user)  { errEl.textContent='Email không tồn tại trong hệ thống.'; errEl.style.display='block'; return; }
+  if (getUserPwd(user.email) !== pwd) { errEl.textContent='Mật khẩu không đúng. Vui lòng thử lại.'; errEl.style.display='block'; return; }
+  currentUser = { ...user, loginTime: new Date().toISOString() };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+  document.getElementById('loginModal').style.display = 'none';
+  document.getElementById('loginPwd').value = '';
+  errEl.style.display = 'none';
+  logAction('login', 'Đăng nhập lúc ' + new Date().toLocaleString('vi-VN'));
+  updateUserBadge();
+}
+
+function doLogout() {
+  if (!confirm('Đăng xuất khỏi tài khoản ' + (currentUser && currentUser.name) + '?')) return;
+  logAction('login', 'Đăng xuất lúc ' + new Date().toLocaleString('vi-VN'));
+  localStorage.removeItem(SESSION_KEY);
+  currentUser = null;
+  document.getElementById('loginModal').style.display = 'flex';
+  document.getElementById('currentUserBadge').textContent = '';
+  document.getElementById('userSelect').value = '';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPwd').value = '';
+}
+
+function updateUserBadge() {
+  if (!currentUser) return;
+  const initials = currentUser.avatar || currentUser.name[0];
+  document.getElementById('currentUserBadge').innerHTML =
+    '<span style="background:var(--navy);color:#fff;border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:5px">' + initials + '</span>' + currentUser.name;
+  // Show audit tab only for admin
+  const isAdmin = currentUser.email.toLowerCase() === ADMIN_EMAIL;
+  const auditTab = document.getElementById('tabAudit');
+  if (auditTab) auditTab.style.display = isAdmin ? 'flex' : 'none';
+}
+
+function populateAuditFilters() {
+  const sel = document.getElementById('auditFilterUser');
+  if (!sel) return;
+  const users = [...new Set(auditLog.map(e=>e.user))];
+  sel.innerHTML = '<option value="">Tất cả kỹ sư</option>' + users.map(u=>'<option>'+u+'</option>').join('');
+}
+
+function renderAuditLog() {
+  const tbody = document.getElementById('auditTableBody');
+  if (!tbody) return;
+  const fUser   = (document.getElementById('auditFilterUser')  && document.getElementById('auditFilterUser').value)  || '';
+  const fAction = (document.getElementById('auditFilterAction') && document.getElementById('auditFilterAction').value) || '';
+  let log = auditLog;
+  if (fUser)   log = log.filter(e=>e.user===fUser);
+  if (fAction) log = log.filter(e=>e.action===fAction);
+  const aLabel = {login:'🔐 Login', create:'➕ Tạo', update:'✏️ Sửa', delete:'🗑 Xóa', import:'📥 Import'};
+  const aColor = {login:'#5c35cc', create:'#00a86b', update:'#0057b8', delete:'#d32f2f', import:'#e67e00'};
+  tbody.innerHTML = log.length ? log.map(function(e) {
+    const d = new Date(e.ts);
+    const ts = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const col = aColor[e.action]||'#4a5a7a';
+    const initials = (e.user||'?').split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+    const safeDetail = (e.detail||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    return '<tr>' +
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap">' + ts + '</td>' +
+      '<td><div style="display:flex;align-items:center;gap:8px">' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">' + initials + '</div>' +
+        '<div><div style="font-size:12px;font-weight:600;color:var(--navy)">' + (e.user||'—') + '</div><div style="font-size:10px;color:var(--text3)">' + (e.email||'') + '</div></div>' +
+      '</div></td>' +
+      '<td><span style="background:' + col + '18;color:' + col + ';border:1px solid ' + col + '44;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;font-family:var(--mono);white-space:nowrap">' + (aLabel[e.action]||e.action) + '</span></td>' +
+      '<td style="font-size:12px;color:var(--text);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + safeDetail + '">' + safeDetail + '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:40px;font-style:italic">Chưa có hoạt động nào được ghi lại</td></tr>';
+}
+
+function clearAuditLog() {
+  if (!confirm('Xóa toàn bộ lịch sử hoạt động?')) return;
+  auditLog = []; saveAudit(); renderAuditLog();
+}
+
+// Patch switchTab
+const _origSwitch = switchTab;
+switchTab = function(tab) {
+  // Block audit tab for non-admins
+  if (tab === 'audit' && (!currentUser || currentUser.email.toLowerCase() !== ADMIN_EMAIL)) return;
+  _origSwitch(tab);
+  var pa = document.getElementById('panelAudit');
+  var ta = document.getElementById('tabAudit');
+  if (pa) pa.classList.toggle('active', tab==='audit');
+  if (ta) ta.classList.toggle('active', tab==='audit');
+  if (tab==='audit') { populateAuditFilters(); renderAuditLog(); }
+};
+
+// Init
+(function() {
+  initLoginScreen();
+  var saved = localStorage.getItem(SESSION_KEY);
+  if (saved) {
+    try { currentUser = JSON.parse(saved); document.getElementById('loginModal').style.display='none'; updateUserBadge(); }
+    catch(e) { localStorage.removeItem(SESSION_KEY); }
+  }
+})();
+const PWD_KEY = 'dcss_passwords_v1';
+
+function getUserPwd(email) {
+  const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+  if (custom[email]) return custom[email];
+  const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+  return user ? user.pwd : null;
+}
+
+function saveUserPwd(email, newPwd) {
+  const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+  custom[email] = newPwd;
+  localStorage.setItem(PWD_KEY, JSON.stringify(custom));
+  // Also update in-memory USERS array so current session works
+  const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (user) user.pwd = newPwd;
+}
+
+function openChangePwd() {
+  if (!currentUser) return;
+  document.getElementById('changePwdAvatar').textContent = currentUser.avatar || currentUser.name[0];
+  document.getElementById('changePwdName').textContent   = currentUser.name;
+  document.getElementById('changePwdEmail').textContent  = currentUser.email;
+  document.getElementById('pwdCurrent').value  = '';
+  document.getElementById('pwdNew').value      = '';
+  document.getElementById('pwdConfirm').value  = '';
+  document.getElementById('changePwdError').style.display   = 'none';
+  document.getElementById('changePwdSuccess').style.display = 'none';
+  document.getElementById('pwdStrengthFill').style.width    = '0%';
+  document.getElementById('pwdStrengthLabel').textContent   = '';
+  document.getElementById('changePwdModal').style.display   = 'flex';
+}
+
+function togglePwdField(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function checkPwdStrength(val) {
+  const fill  = document.getElementById('pwdStrengthFill');
+  const label = document.getElementById('pwdStrengthLabel');
+  if (!val) { fill.style.width = '0%'; label.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { w:'20%', color:'#d32f2f', text:'Rất yếu' },
+    { w:'40%', color:'#e67e00', text:'Yếu' },
+    { w:'60%', color:'#f0b429', text:'Trung bình' },
+    { w:'80%', color:'#0096c7', text:'Mạnh' },
+    { w:'100%',color:'#00784a', text:'Rất mạnh' },
+  ];
+  const lvl = levels[Math.min(score - 1, 4)] || levels[0];
+  fill.style.width      = lvl.w;
+  fill.style.background = lvl.color;
+  label.textContent     = lvl.text;
+  label.style.color     = lvl.color;
+}
+
+function doChangePwd() {
+  const errEl = document.getElementById('changePwdError');
+  const okEl  = document.getElementById('changePwdSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  const current = document.getElementById('pwdCurrent').value;
+  const newPwd  = document.getElementById('pwdNew').value;
+  const confirm = document.getElementById('pwdConfirm').value;
+
+  const showErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+  if (!current) return showErr('Vui lòng nhập mật khẩu hiện tại.');
+  if (!newPwd)  return showErr('Vui lòng nhập mật khẩu mới.');
+  if (newPwd.length < 8) return showErr('Mật khẩu mới phải có ít nhất 8 ký tự.');
+  if (newPwd !== confirm) return showErr('Xác nhận mật khẩu không khớp.');
+
+  const stored = getUserPwd(currentUser.email);
+  if (stored !== current) return showErr('Mật khẩu hiện tại không đúng.');
+  if (newPwd === current) return showErr('Mật khẩu mới phải khác mật khẩu hiện tại.');
+
+  saveUserPwd(currentUser.email, newPwd);
+  logAction('login', 'Đổi mật khẩu thành công');
+  document.getElementById('pwdCurrent').value = '';
+  document.getElementById('pwdNew').value      = '';
+  document.getElementById('pwdConfirm').value  = '';
+  document.getElementById('pwdStrengthFill').style.width = '0%';
+  document.getElementById('pwdStrengthLabel').textContent = '';
+  okEl.textContent = '✅ Đổi mật khẩu thành công! Mật khẩu mới đã được lưu.';
+  okEl.style.display = 'block';
+  setTimeout(() => closeModal('changePwdModal'), 2000);
+}
+/* ======================== END CHANGE PASSWORD ======================== */
+
+renderTable();
+</script>
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal" style="display:flex;align-items:center;background:rgba(0,15,50,0.85)">
+  <div class="modal" style="max-width:420px;margin:auto;text-align:center;padding:40px 36px">
+    <div style="margin-bottom:28px">
+      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="background:var(--accent);color:#fff;font-family:var(--mono);font-size:13px;font-weight:700;padding:5px 12px;border-radius:5px;letter-spacing:1.5px">DCSS</span>
+        <span style="font-size:17px;font-weight:700;color:var(--navy)">Ticket Support</span>
+      </div>
+      <p style="font-size:13px;color:var(--text2)">Đăng nhập để tiếp tục</p>
+    </div>
+    <div style="text-align:left;margin-bottom:20px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">Chọn kỹ sư</label>
+      <select id="userSelect" onchange="selectUser(this.value)"
+        style="width:100%;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);outline:none;cursor:pointer;appearance:auto">
+        <option value="">-- Chọn tên kỹ sư --</option>
+        <option value="tang.pham@dcsstech.com">Tang Pham</option>
+        <option value="sang.tran@dcsstech.com">Sang Tran</option>
+        <option value="quang.luu@dcsstech.com">Quang Luu</option>
+        <option value="quan.nguyen@dcsstech.com">Quan Nguyen (Admin)</option>
+      </select>
+    </div>
+    <div style="text-align:left;margin-bottom:20px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">Hoặc nhập email</label>
+      <input type="email" id="loginEmail" placeholder="ten@dcsstech.com"
+        style="width:100%;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;padding:9px 12px;font-size:13px;font-family:var(--sans);outline:none">
+    </div>
+    <div style="text-align:left;margin-bottom:20px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">Mật khẩu<span style="color:var(--danger)">*</span></label>
+      <div style="position:relative">
+        <input type="password" id="loginPwd" placeholder="Nhập mật khẩu"
+          onkeydown="if(event.key==='Enter')doLogin()"
+          style="width:100%;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;padding:9px 40px 9px 12px;font-size:13px;font-family:var(--sans);outline:none">
+        <span onclick="togglePwd()" title="Hiện/ẩn mật khẩu"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;color:var(--text3);user-select:none" id="pwdEye">👁</span>
+      </div>
+    </div>
+    <div id="loginError" style="color:var(--danger);font-size:12px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:16px" onclick="doLogin()">🔐 Đăng nhập</button>
+    <p style="font-size:11px;color:var(--text3);text-align:center;border-top:1px solid var(--border);padding-top:14px;margin:0">Hệ thống nội bộ DCSS VN · Chỉ dành cho kỹ sư được cấp quyền</p>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="changePwdModal" style="display:none" onclick="closeIfOverlay(event,'changePwdModal')">
+  <div class="modal" style="max-width:420px;margin:auto;padding:32px">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Đổi mật khẩu</div>
+      <button class="modal-close" onclick="closeModal('changePwdModal')">✕</button>
+    </div>
+    <div id="changePwdUser" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f4f7fc;border-radius:8px;margin-bottom:20px">
+      <div id="changePwdAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0"></div>
+      <div>
+        <div id="changePwdName" style="font-size:13px;font-weight:600;color:var(--navy)"></div>
+        <div id="changePwdEmail" style="font-size:11px;color:var(--text2)"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="field-group">
+        <label>Mật khẩu hiện tại<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdCurrent" placeholder="Nhập mật khẩu hiện tại"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdCurrent')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Mật khẩu mới<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdNew" placeholder="Tối thiểu 8 ký tự"
+            oninput="checkPwdStrength(this.value)"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdNew')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+        <div id="pwdStrengthBar" style="height:4px;border-radius:2px;background:#dde3ec;margin-top:6px;overflow:hidden">
+          <div id="pwdStrengthFill" style="height:100%;width:0%;border-radius:2px;transition:all 0.3s"></div>
+        </div>
+        <div id="pwdStrengthLabel" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+      </div>
+      <div class="field-group">
+        <label>Xác nhận mật khẩu mới<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdConfirm" placeholder="Nhập lại mật khẩu mới"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdConfirm')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+      </div>
+    </div>
+    <div id="changePwdError" style="color:var(--danger);font-size:12px;margin-top:12px;display:none;padding:8px 12px;background:#fdecea;border-radius:6px;border-left:3px solid var(--danger)"></div>
+    <div id="changePwdSuccess" style="color:#00784a;font-size:12px;margin-top:12px;display:none;padding:8px 12px;background:#e6f7f0;border-radius:6px;border-left:3px solid #00784a"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('changePwdModal')">Hủy</button>
+      <button class="btn btn-primary" onclick="doChangePwd()">💾 Lưu mật khẩu</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
