@@ -354,6 +354,7 @@
   <button class="tab-btn" id="tabAudit" onclick="switchTab('audit')" style="display:none">🕓 Audit Log</button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding:0 4px">
     <span id="currentUserBadge" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+    <button class="btn btn-ghost btn-sm" onclick="openChangePwd()" style="font-size:11px;padding:4px 10px">🔑 Đổi mật khẩu</button>
     <button class="btn btn-ghost btn-sm" onclick="doLogout()" style="font-size:11px;padding:4px 10px">⏏ Logout</button>
   </div>
 </div>
@@ -387,6 +388,7 @@
     <option value="Yes">Yes</option>
     <option value="No">No</option>
   </select>
+  <button class="btn btn-ghost btn-sm" id="clearFilterBtn" onclick="clearAllFilters()" style="display:none;color:var(--danger);border-color:var(--danger);white-space:nowrap">✕ Clear Filters</button>
   <select class="filter-sel" id="pageSizeSel" onchange="changePageSize()" style="margin-left:auto">
     <option value="20">20 / page</option>
     <option value="50" selected>50 / page</option>
@@ -948,6 +950,12 @@ function getFiltered() {
   const fContract = document.getElementById('filterContract').value;
   const fMonth = document.getElementById('filterMonth').value;
   const fSLA = document.getElementById('filterSLA').value;
+
+  // Show/hide clear button
+  const hasFilter = q || fStatus || fContract || fMonth || fSLA;
+  const btn = document.getElementById('clearFilterBtn');
+  if (btn) btn.style.display = hasFilter ? 'inline-flex' : 'none';
+
   return tickets.filter(t => {
     if (q && !JSON.stringify(t).toLowerCase().includes(q)) return false;
     if (fStatus && t.caseStatus !== fStatus) return false;
@@ -1030,6 +1038,16 @@ function renderTable() {
   ` : `<span class="pg-info">${total} ticket${total!==1?'s':''}</span>`;
 
   renderStats();
+}
+
+function clearAllFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterContract').value = '';
+  document.getElementById('filterMonth').value = '';
+  document.getElementById('filterSLA').value = '';
+  currentPage = 1;
+  renderTable();
 }
 
 function changePage(d) { currentPage += d; renderTable(); }
@@ -1739,7 +1757,7 @@ function doLogin() {
   if (!pwd)   { errEl.textContent='Vui lòng nhập mật khẩu.'; errEl.style.display='block'; return; }
   const user = USERS.find(u => u.email.toLowerCase()===email);
   if (!user)  { errEl.textContent='Email không tồn tại trong hệ thống.'; errEl.style.display='block'; return; }
-  if (user.pwd !== pwd) { errEl.textContent='Mật khẩu không đúng. Vui lòng thử lại.'; errEl.style.display='block'; return; }
+  if (getUserPwd(user.email) !== pwd) { errEl.textContent='Mật khẩu không đúng. Vui lòng thử lại.'; errEl.style.display='block'; return; }
   currentUser = { ...user, loginTime: new Date().toISOString() };
   localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
   document.getElementById('loginModal').style.display = 'none';
@@ -1834,7 +1852,101 @@ switchTab = function(tab) {
     catch(e) { localStorage.removeItem(SESSION_KEY); }
   }
 })();
-/* ======================== END LOGIN & AUDIT ======================== */
+const PWD_KEY = 'dcss_passwords_v1';
+
+function getUserPwd(email) {
+  const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+  if (custom[email]) return custom[email];
+  const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+  return user ? user.pwd : null;
+}
+
+function saveUserPwd(email, newPwd) {
+  const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+  custom[email] = newPwd;
+  localStorage.setItem(PWD_KEY, JSON.stringify(custom));
+  // Also update in-memory USERS array so current session works
+  const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (user) user.pwd = newPwd;
+}
+
+function openChangePwd() {
+  if (!currentUser) return;
+  document.getElementById('changePwdAvatar').textContent = currentUser.avatar || currentUser.name[0];
+  document.getElementById('changePwdName').textContent   = currentUser.name;
+  document.getElementById('changePwdEmail').textContent  = currentUser.email;
+  document.getElementById('pwdCurrent').value  = '';
+  document.getElementById('pwdNew').value      = '';
+  document.getElementById('pwdConfirm').value  = '';
+  document.getElementById('changePwdError').style.display   = 'none';
+  document.getElementById('changePwdSuccess').style.display = 'none';
+  document.getElementById('pwdStrengthFill').style.width    = '0%';
+  document.getElementById('pwdStrengthLabel').textContent   = '';
+  document.getElementById('changePwdModal').style.display   = 'flex';
+}
+
+function togglePwdField(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function checkPwdStrength(val) {
+  const fill  = document.getElementById('pwdStrengthFill');
+  const label = document.getElementById('pwdStrengthLabel');
+  if (!val) { fill.style.width = '0%'; label.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { w:'20%', color:'#d32f2f', text:'Rất yếu' },
+    { w:'40%', color:'#e67e00', text:'Yếu' },
+    { w:'60%', color:'#f0b429', text:'Trung bình' },
+    { w:'80%', color:'#0096c7', text:'Mạnh' },
+    { w:'100%',color:'#00784a', text:'Rất mạnh' },
+  ];
+  const lvl = levels[Math.min(score - 1, 4)] || levels[0];
+  fill.style.width      = lvl.w;
+  fill.style.background = lvl.color;
+  label.textContent     = lvl.text;
+  label.style.color     = lvl.color;
+}
+
+function doChangePwd() {
+  const errEl = document.getElementById('changePwdError');
+  const okEl  = document.getElementById('changePwdSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  const current = document.getElementById('pwdCurrent').value;
+  const newPwd  = document.getElementById('pwdNew').value;
+  const confirm = document.getElementById('pwdConfirm').value;
+
+  const showErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+  if (!current) return showErr('Vui lòng nhập mật khẩu hiện tại.');
+  if (!newPwd)  return showErr('Vui lòng nhập mật khẩu mới.');
+  if (newPwd.length < 8) return showErr('Mật khẩu mới phải có ít nhất 8 ký tự.');
+  if (newPwd !== confirm) return showErr('Xác nhận mật khẩu không khớp.');
+
+  const stored = getUserPwd(currentUser.email);
+  if (stored !== current) return showErr('Mật khẩu hiện tại không đúng.');
+  if (newPwd === current) return showErr('Mật khẩu mới phải khác mật khẩu hiện tại.');
+
+  saveUserPwd(currentUser.email, newPwd);
+  logAction('login', 'Đổi mật khẩu thành công');
+  document.getElementById('pwdCurrent').value = '';
+  document.getElementById('pwdNew').value      = '';
+  document.getElementById('pwdConfirm').value  = '';
+  document.getElementById('pwdStrengthFill').style.width = '0%';
+  document.getElementById('pwdStrengthLabel').textContent = '';
+  okEl.textContent = '✅ Đổi mật khẩu thành công! Mật khẩu mới đã được lưu.';
+  okEl.style.display = 'block';
+  setTimeout(() => closeModal('changePwdModal'), 2000);
+}
+/* ======================== END CHANGE PASSWORD ======================== */
 
 renderTable();
 </script>
@@ -1877,6 +1989,60 @@ renderTable();
     <div id="loginError" style="color:var(--danger);font-size:12px;margin-bottom:10px;display:none"></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:16px" onclick="doLogin()">🔐 Đăng nhập</button>
     <p style="font-size:11px;color:var(--text3);text-align:center;border-top:1px solid var(--border);padding-top:14px;margin:0">Hệ thống nội bộ DCSS VN · Chỉ dành cho kỹ sư được cấp quyền</p>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="changePwdModal" style="display:none" onclick="closeIfOverlay(event,'changePwdModal')">
+  <div class="modal" style="max-width:420px;margin:auto;padding:32px">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Đổi mật khẩu</div>
+      <button class="modal-close" onclick="closeModal('changePwdModal')">✕</button>
+    </div>
+    <div id="changePwdUser" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f4f7fc;border-radius:8px;margin-bottom:20px">
+      <div id="changePwdAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0"></div>
+      <div>
+        <div id="changePwdName" style="font-size:13px;font-weight:600;color:var(--navy)"></div>
+        <div id="changePwdEmail" style="font-size:11px;color:var(--text2)"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="field-group">
+        <label>Mật khẩu hiện tại<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdCurrent" placeholder="Nhập mật khẩu hiện tại"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdCurrent')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Mật khẩu mới<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdNew" placeholder="Tối thiểu 8 ký tự"
+            oninput="checkPwdStrength(this.value)"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdNew')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+        <div id="pwdStrengthBar" style="height:4px;border-radius:2px;background:#dde3ec;margin-top:6px;overflow:hidden">
+          <div id="pwdStrengthFill" style="height:100%;width:0%;border-radius:2px;transition:all 0.3s"></div>
+        </div>
+        <div id="pwdStrengthLabel" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+      </div>
+      <div class="field-group">
+        <label>Xác nhận mật khẩu mới<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="pwdConfirm" placeholder="Nhập lại mật khẩu mới"
+            style="width:100%;padding-right:40px">
+          <span onclick="togglePwdField('pwdConfirm')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text3);font-size:15px">👁</span>
+        </div>
+      </div>
+    </div>
+    <div id="changePwdError" style="color:var(--danger);font-size:12px;margin-top:12px;display:none;padding:8px 12px;background:#fdecea;border-radius:6px;border-left:3px solid var(--danger)"></div>
+    <div id="changePwdSuccess" style="color:#00784a;font-size:12px;margin-top:12px;display:none;padding:8px 12px;background:#e6f7f0;border-radius:6px;border-left:3px solid #00784a"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('changePwdModal')">Hủy</button>
+      <button class="btn btn-primary" onclick="doChangePwd()">💾 Lưu mật khẩu</button>
+    </div>
   </div>
 </div>
 
