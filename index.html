@@ -514,10 +514,10 @@
 <div class="dash-wrap">
   <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
     <div style="font-size:16px;font-weight:700;color:var(--navy)">🕓 Lịch sử hoạt động</div>
-    <select class="filter-sel" id="auditFilterUser" onchange="renderAuditLog()" style="font-size:12px;padding:5px 8px;min-width:150px">
+    <select class="filter-sel" id="auditFilterUser" onchange="renderAuditLogTable()" style="font-size:12px;padding:5px 8px;min-width:150px">
       <option value="">Tất cả kỹ sư</option>
     </select>
-    <select class="filter-sel" id="auditFilterAction" onchange="renderAuditLog()" style="font-size:12px;padding:5px 8px;min-width:130px">
+    <select class="filter-sel" id="auditFilterAction" onchange="renderAuditLogTable()" style="font-size:12px;padding:5px 8px;min-width:130px">
       <option value="">Tất cả hành động</option>
       <option value="login">Login</option>
       <option value="create">Tạo ticket</option>
@@ -525,8 +525,10 @@
       <option value="delete">Xóa ticket</option>
       <option value="import">Import Excel</option>
     </select>
+    <button class="btn btn-ghost btn-sm" onclick="renderAuditLog()" title="Tải lại từ Sheet" style="white-space:nowrap">🔄 Refresh</button>
     <button class="btn btn-ghost btn-sm" onclick="clearAuditLog()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">🗑 Xóa log</button>
   </div>
+  <div id="auditLoadStatus" style="display:none;font-size:12px;color:var(--text2);padding:8px 12px;background:#f4f7fc;border-radius:6px;margin-bottom:12px"></div>
   <div class="parts-table-wrap" style="max-height:calc(100vh - 220px)">
     <table class="parts-table" style="table-layout:auto">
       <thead>
@@ -566,7 +568,13 @@
           </div>
           <div class="field-group">
             <label>L2 Engineer<span class="req">*</span></label>
-            <input type="text" name="l2engineer" required placeholder="Nhập tên L2 engineer">
+            <select name="l2engineer" required>
+              <option value="">Select...</option>
+              <option>Tang Pham</option>
+              <option>Sang Tran</option>
+              <option>Quan Nguyen</option>
+              <option>OTHERS</option>
+            </select>
           </div>
           <div class="field-group">
             <label>L1 Engineer<span class="req">*</span></label>
@@ -634,7 +642,13 @@
           </div>
           <div class="field-group span2">
             <label>Serial Number / Service Tag<span class="req">*</span></label>
-            <input type="text" name="serialNumber" required placeholder="SN or Service Tag">
+            <div style="position:relative">
+              <input type="text" name="serialNumber" id="snInput" required placeholder="Paste SN — tự động điền thông tin"
+                oninput="autoFillBySN(this.value)"
+                style="padding-right:90px">
+              <span id="snMatchBadge" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#e6f7f0;color:#00784a;border:1px solid #b3e8d1;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--mono)">✓ Auto-filled</span>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">💡 Paste SN → app tự tìm trong lịch sử và điền Company, SLA, Manufacturer, Model...</div>
           </div>
         </div>
       </div>
@@ -1053,6 +1067,54 @@ function clearAllFilters() {
 function changePage(d) { currentPage += d; renderTable(); }
 function changePageSize() { PAGE_SIZE = parseInt(document.getElementById('pageSizeSel').value); currentPage = 1; renderTable(); }
 
+/* AUTO-FILL BY SN */
+function autoFillBySN(sn) {
+  const badge = document.getElementById('snMatchBadge');
+  if (!sn || sn.trim().length < 4) { if (badge) badge.style.display='none'; return; }
+  const q = sn.trim().toUpperCase();
+
+  const match = tickets.find(t => t.serialNumber && t.serialNumber.trim().toUpperCase() === q)
+             || tickets.find(t => t.serialNumber && t.serialNumber.trim().toUpperCase().startsWith(q));
+
+  if (!match) { if (badge) badge.style.display='none'; return; }
+
+  const form = document.getElementById('ticketForm');
+  const fillMap = {
+    manufacturer:   match.manufacturer,
+    model:          match.model,
+    contractNumber: match.contractNumber,
+    companyName:    match.companyName,
+    eu:             match.eu,
+    country:        match.country,
+    slaLevel:       match.slaLevel,
+    contract:       match.contract,
+  };
+
+  let filled = 0;
+  Object.entries(fillMap).forEach(([field, val]) => {
+    if (!val || !String(val).trim()) return;
+    const el = form.elements[field];
+    if (!el || el.value) return;
+    el.value = val;
+    el.dispatchEvent(new Event('change'));
+    el.style.transition = 'background 0.3s';
+    el.style.background = '#e6f7f0';
+    setTimeout(() => { el.style.background = ''; }, 2500);
+    filled++;
+  });
+
+  if (badge) {
+    if (filled > 0) {
+      badge.textContent = '✓ Đã điền ' + filled + ' trường';
+      badge.style.cssText = 'display:block;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#e6f7f0;color:#00784a;border:1px solid #b3e8d1;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--mono)';
+    } else {
+      badge.textContent = '✓ SN đã có trong hệ thống';
+      badge.style.cssText = 'display:block;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#e8f0fb;color:#0057b8;border:1px solid #b3cdf5;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--mono)';
+    }
+    setTimeout(() => { badge.style.display='none'; }, 4000);
+  }
+}
+
 /* FORM */
 function openForm(ticket = null) {
   editingId = ticket ? ticket.id : null;
@@ -1068,6 +1130,9 @@ function openForm(ticket = null) {
     });
   }
   document.getElementById('formModal').style.display = 'flex';
+  // Reset SN auto-fill badge
+  const snBadge = document.getElementById('snMatchBadge');
+  if (snBadge) snBadge.style.display = 'none';
 }
 
 function saveTicket(e) {
@@ -1729,10 +1794,38 @@ let auditLog      = JSON.parse(localStorage.getItem(AUDIT_KEY) || '[]');
 function saveAudit() { localStorage.setItem(AUDIT_KEY, JSON.stringify(auditLog)); }
 
 function logAction(action, detail) {
-  if (!currentUser) return;
-  auditLog.unshift({ ts: new Date().toISOString(), user: currentUser.name, email: currentUser.email, action, detail: detail||'' });
+  const entry = {
+    ts:     new Date().toISOString(),
+    user:   currentUser ? currentUser.name  : 'Unknown',
+    email:  currentUser ? currentUser.email : '',
+    action,
+    detail: detail || ''
+  };
+  // Save locally
+  auditLog.unshift(entry);
   if (auditLog.length > 2000) auditLog = auditLog.slice(0, 2000);
   saveAudit();
+  // Push to Google Sheet via JSONP GET (reliable, bypasses CORS)
+  if (SHEET_URL) sendAuditViaJsonp(entry);
+}
+
+function sendAuditViaJsonp(entry) {
+  const cbName = 'logCb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const script = document.createElement('script');
+  const params = new URLSearchParams({
+    action:  'log',
+    ts:      entry.ts,
+    user:    entry.user,
+    email:   entry.email,
+    logaction: entry.action,
+    detail:  entry.detail,
+    callback: cbName
+  });
+  const timer = setTimeout(() => { delete window[cbName]; script.remove(); }, 8000);
+  window[cbName] = function() { clearTimeout(timer); delete window[cbName]; script.remove(); };
+  script.onerror = () => { clearTimeout(timer); delete window[cbName]; };
+  script.src = SHEET_URL + '?' + params.toString();
+  document.head.appendChild(script);
 }
 
 function initLoginScreen() {
@@ -1793,11 +1886,81 @@ function updateUserBadge() {
 function populateAuditFilters() {
   const sel = document.getElementById('auditFilterUser');
   if (!sel) return;
-  const users = [...new Set(auditLog.map(e=>e.user))];
+  const users = [...new Set(auditLog.map(e=>e.user).filter(Boolean))];
   sel.innerHTML = '<option value="">Tất cả kỹ sư</option>' + users.map(u=>'<option>'+u+'</option>').join('');
 }
 
+async function loadAuditFromSheet() {
+  const statusEl = document.getElementById('auditLoadStatus');
+  if (statusEl) { statusEl.textContent = '⏳ Đang tải lịch sử từ Google Sheet...'; statusEl.style.display='block'; }
+
+  if (!SHEET_URL) {
+    if (statusEl) { statusEl.textContent = '🟡 Chưa kết nối Google Sheet — hiển thị log local'; }
+    populateAuditFilters();
+    renderAuditLogTable();
+    return;
+  }
+
+  await loadAuditViaJsonp();
+}
+
+function loadAuditViaJsonp() {
+  return new Promise((resolve) => {
+    const statusEl = document.getElementById('auditLoadStatus');
+    const cbName = 'auditCb_' + Date.now();
+    const script = document.createElement('script');
+
+    const timer = setTimeout(() => {
+      delete window[cbName]; script.remove();
+      if (statusEl) statusEl.textContent = '🟡 Timeout — Apps Script chưa deploy phiên bản mới. Hiển thị log local.';
+      populateAuditFilters();
+      renderAuditLogTable();
+      resolve();
+    }, 12000);
+
+    window[cbName] = function(json) {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      if (json.ok && Array.isArray(json.data)) {
+        if (json.data.length > 0) {
+          auditLog = json.data;
+          saveAudit();
+        }
+        if (statusEl) {
+          statusEl.textContent = '🟢 Đã tải ' + json.data.length + ' bản ghi từ Google Sheet';
+          setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+        }
+      } else {
+        // Apps Script chưa có action get_logs → hiện hướng dẫn
+        if (statusEl) {
+          statusEl.innerHTML = '🟡 Apps Script cần được cập nhật (deploy lại <b>Code.gs</b> mới). Đang hiển thị log local.';
+        }
+      }
+      populateAuditFilters();
+      renderAuditLogTable();
+      resolve();
+    };
+
+    script.onerror = () => {
+      clearTimeout(timer); delete window[cbName];
+      if (statusEl) statusEl.textContent = '🟡 Không tải được từ Sheet — hiển thị log local.';
+      populateAuditFilters();
+      renderAuditLogTable();
+      resolve();
+    };
+
+    script.src = SHEET_URL + '?action=get_logs&callback=' + cbName + '&t=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
 function renderAuditLog() {
+  // Show loading state, then fetch from sheet
+  const tbody = document.getElementById('auditTableBody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:32px">⏳ Đang tải...</td></tr>';
+  loadAuditFromSheet();
+}
+
+function renderAuditLogTable() {
   const tbody = document.getElementById('auditTableBody');
   if (!tbody) return;
   const fUser   = (document.getElementById('auditFilterUser')  && document.getElementById('auditFilterUser').value)  || '';
@@ -1826,8 +1989,8 @@ function renderAuditLog() {
 }
 
 function clearAuditLog() {
-  if (!confirm('Xóa toàn bộ lịch sử hoạt động?')) return;
-  auditLog = []; saveAudit(); renderAuditLog();
+  if (!confirm('Xóa toàn bộ lịch sử hoạt động trên thiết bị này?\n(Dữ liệu trên Google Sheet vẫn được giữ nguyên)')) return;
+  auditLog = []; saveAudit(); renderAuditLogTable();
 }
 
 // Patch switchTab
