@@ -1418,12 +1418,43 @@ function exportExcel() {
     'caseStatus','pendingReason','symptom','partReplaced','partQty','actionPlan',
     'newPartSN','defectivePartSN','requestBy','contactPerson','note'
   ];
+  // Fields that must be forced as text to prevent XLSX auto-converting to date/time
+  const textFields = new Set(['receivedTime','onsiteTime1','onsiteTime2','receivedDate','onsiteDate1','onsiteDate2']);
+
   const rows = tickets.map((t, i) => {
     const row = {};
-    cols.forEach((col, ci) => { row[col] = keys[ci] === null ? i+1 : (t[keys[ci]] || ''); });
+    cols.forEach((col, ci) => {
+      const key = keys[ci];
+      if (key === null) { row[col] = i + 1; return; }
+      const val = t[key] || '';
+      // Prefix time/date fields with apostrophe trick via cell object to force text
+      row[col] = val;
+    });
     return row;
   });
+
   const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
+
+  // Post-process: force time & date cells to be text type (z = format, t = type)
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  // Find column indices for time/date fields
+  const timeColIndices = new Set();
+  keys.forEach((k, ci) => { if (k && textFields.has(k)) timeColIndices.add(ci); });
+
+  for (let R = range.s.r + 1; R <= range.e.r; R++) {
+    timeColIndices.forEach(ci => {
+      const cellRef = XLSX.utils.encode_cell({ r: R, c: ci });
+      const cell = ws[cellRef];
+      if (cell && cell.v !== '' && cell.v !== undefined) {
+        // Force as text string
+        cell.t = 's';
+        cell.v = String(cell.v);
+        delete cell.z;
+        delete cell.w;
+      }
+    });
+  }
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'CSR');
   XLSX.writeFile(wb, `DCSS_Ticket_Support_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -1813,17 +1844,34 @@ function sendAuditViaJsonp(entry) {
   const cbName = 'logCb_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const script = document.createElement('script');
   const params = new URLSearchParams({
-    action:  'log',
-    ts:      entry.ts,
-    user:    entry.user,
-    email:   entry.email,
+    action:    'log',
+    ts:        entry.ts,
+    user:      entry.user,
+    email:     entry.email,
     logaction: entry.action,
-    detail:  entry.detail,
-    callback: cbName
+    detail:    entry.detail,
+    callback:  cbName
   });
-  const timer = setTimeout(() => { delete window[cbName]; script.remove(); }, 8000);
-  window[cbName] = function() { clearTimeout(timer); delete window[cbName]; script.remove(); };
-  script.onerror = () => { clearTimeout(timer); delete window[cbName]; };
+
+  const timer = setTimeout(() => {
+    delete window[cbName]; script.remove();
+    console.warn('[AuditLog] Timeout — entry not saved to Sheet:', entry.action, entry.user);
+  }, 10000);
+
+  window[cbName] = function(res) {
+    clearTimeout(timer); delete window[cbName]; script.remove();
+    if (res && res.ok) {
+      console.log('[AuditLog] ✓ Saved to Sheet:', entry.action, entry.user);
+    } else {
+      console.warn('[AuditLog] ✗ Sheet error:', res && res.error, '| entry:', entry.action, entry.user);
+    }
+  };
+
+  script.onerror = () => {
+    clearTimeout(timer); delete window[cbName];
+    console.warn('[AuditLog] Script load error for:', entry.action, entry.user);
+  };
+
   script.src = SHEET_URL + '?' + params.toString();
   document.head.appendChild(script);
 }
@@ -1842,15 +1890,35 @@ function togglePwd() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pwd   = document.getElementById('loginPwd').value;
   const errEl = document.getElementById('loginError');
+  const btn   = document.querySelector('#loginModal .btn-primary');
+
   if (!email) { errEl.textContent='Vui lòng chọn hoặc nhập email.'; errEl.style.display='block'; return; }
   if (!pwd)   { errEl.textContent='Vui lòng nhập mật khẩu.'; errEl.style.display='block'; return; }
+
   const user = USERS.find(u => u.email.toLowerCase()===email);
   if (!user)  { errEl.textContent='Email không tồn tại trong hệ thống.'; errEl.style.display='block'; return; }
-  if (getUserPwd(user.email) !== pwd) { errEl.textContent='Mật khẩu không đúng. Vui lòng thử lại.'; errEl.style.display='block'; return; }
+
+  // Show loading state
+  if (btn) { btn.textContent = '⏳ Đang kiểm tra...'; btn.disabled = true; }
+  errEl.style.display = 'none';
+
+  // Fetch latest password from Sheet (ensures cross-device sync)
+  await fetchPwdFromSheet(email);
+
+  // Validate
+  const storedPwd = getUserPwd(email);
+  if (btn) { btn.textContent = '🔐 Đăng nhập'; btn.disabled = false; }
+
+  if (!storedPwd || storedPwd !== pwd) {
+    errEl.textContent = 'Mật khẩu không đúng. Vui lòng thử lại.';
+    errEl.style.display = 'block';
+    return;
+  }
+
   currentUser = { ...user, loginTime: new Date().toISOString() };
   localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
   document.getElementById('loginModal').style.display = 'none';
@@ -2018,19 +2086,69 @@ switchTab = function(tab) {
 const PWD_KEY = 'dcss_passwords_v1';
 
 function getUserPwd(email) {
+  // Local cache first (already fetched from Sheet)
   const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
   if (custom[email]) return custom[email];
+  // Fallback to default
   const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
   return user ? user.pwd : null;
 }
 
 function saveUserPwd(email, newPwd) {
+  // Save locally
   const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
   custom[email] = newPwd;
   localStorage.setItem(PWD_KEY, JSON.stringify(custom));
-  // Also update in-memory USERS array so current session works
+  // Update in-memory USERS
   const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
   if (user) user.pwd = newPwd;
+  // Sync to Google Sheet via JSONP
+  if (SHEET_URL) {
+    syncPwdToSheet(email, newPwd);
+  }
+}
+
+function syncPwdToSheet(email, pwd) {
+  const cbName = 'pwdCb_' + Date.now();
+  const script = document.createElement('script');
+  const params = new URLSearchParams({ action: 'set_pwd', email, newpwd: pwd, callback: cbName });
+  const timer = setTimeout(() => { delete window[cbName]; script.remove(); }, 8000);
+  window[cbName] = function(res) {
+    clearTimeout(timer); delete window[cbName]; script.remove();
+    console.log('[Password]', res && res.ok ? '✓ Synced to Sheet' : '✗ Failed: ' + (res && res.error));
+  };
+  script.onerror = () => { clearTimeout(timer); delete window[cbName]; };
+  script.src = SHEET_URL + '?' + params.toString();
+  document.head.appendChild(script);
+}
+
+// Fetch password from Sheet on login — ensures cross-device sync
+function fetchPwdFromSheet(email) {
+  return new Promise((resolve) => {
+    if (!SHEET_URL) { resolve(null); return; }
+    const cbName = 'getPwd_' + Date.now();
+    const script = document.createElement('script');
+    const params = new URLSearchParams({ action: 'get_pwd', email, callback: cbName });
+    const timer = setTimeout(() => { delete window[cbName]; script.remove(); resolve(null); }, 6000);
+    window[cbName] = function(res) {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      if (res && res.ok && res.pwd) {
+        // Cache locally
+        const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+        custom[email] = res.pwd;
+        localStorage.setItem(PWD_KEY, JSON.stringify(custom));
+        // Update USERS in memory
+        const user = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (user) user.pwd = res.pwd;
+        resolve(res.pwd);
+      } else {
+        resolve(null);
+      }
+    };
+    script.onerror = () => { clearTimeout(timer); delete window[cbName]; resolve(null); };
+    script.src = SHEET_URL + '?' + params.toString();
+    document.head.appendChild(script);
+  });
 }
 
 function openChangePwd() {
