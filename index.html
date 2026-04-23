@@ -2195,16 +2195,16 @@ function checkPwdStrength(val) {
   label.style.color     = lvl.color;
 }
 
-function doChangePwd() {
+async function doChangePwd() {
   const errEl = document.getElementById('changePwdError');
   const okEl  = document.getElementById('changePwdSuccess');
   errEl.style.display = 'none';
-  okEl.style.display  = 'none';
+  okEl.style.color = '#00784a';
+  okEl.style.display = 'none';
 
   const current = document.getElementById('pwdCurrent').value;
   const newPwd  = document.getElementById('pwdNew').value;
   const confirm = document.getElementById('pwdConfirm').value;
-
   const showErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
 
   if (!current) return showErr('Vui lòng nhập mật khẩu hiện tại.');
@@ -2216,31 +2216,55 @@ function doChangePwd() {
   if (stored !== current) return showErr('Mật khẩu hiện tại không đúng.');
   if (newPwd === current) return showErr('Mật khẩu mới phải khác mật khẩu hiện tại.');
 
-  saveUserPwd(currentUser.email, newPwd);
-  logAction('login', 'Đổi mật khẩu thành công');
+  // 1. Save locally
+  const custom = JSON.parse(localStorage.getItem(PWD_KEY) || '{}');
+  custom[currentUser.email] = newPwd;
+  localStorage.setItem(PWD_KEY, JSON.stringify(custom));
+  const u = USERS.find(x => x.email.toLowerCase() === currentUser.email.toLowerCase());
+  if (u) u.pwd = newPwd;
 
-  // Gửi email thông báo qua Apps Script
-  const changedAt = new Date().toLocaleString('vi-VN', {
-    day:'2-digit', month:'2-digit', year:'numeric',
-    hour:'2-digit', minute:'2-digit', second:'2-digit'
-  });
-  if (SHEET_URL) {
-    sheetPost({
-      action: 'notify_pwd_change',
-      email: currentUser.email,
-      name: currentUser.name,
-      changedAt: changedAt
-    });
-  }
-
-  document.getElementById('pwdCurrent').value = '';
-  document.getElementById('pwdNew').value      = '';
-  document.getElementById('pwdConfirm').value  = '';
+  // 2. Clear fields
+  ['pwdCurrent','pwdNew','pwdConfirm'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pwdStrengthFill').style.width = '0%';
   document.getElementById('pwdStrengthLabel').textContent = '';
-  okEl.textContent = '✅ Đổi mật khẩu thành công! Email thông báo đã được gửi đến ' + currentUser.email;
-  okEl.style.display = 'block';
-  setTimeout(() => closeModal('changePwdModal'), 2500);
+
+  // 3. Sync to Sheet and wait
+  if (SHEET_URL) {
+    okEl.textContent = '⏳ Đang đồng bộ lên Google Sheet...';
+    okEl.style.display = 'block';
+    const ok = await syncPwdToSheetAsync(currentUser.email, newPwd);
+    if (ok) {
+      okEl.textContent = '✅ Đổi mật khẩu thành công! Đã đồng bộ — mọi thiết bị dùng được ngay.';
+    } else {
+      okEl.textContent = '⚠️ Lưu local OK nhưng chưa sync được lên Sheet. Kiểm tra Apps Script đã deploy version mới chưa.';
+      okEl.style.color = 'var(--warn)';
+    }
+  } else {
+    okEl.textContent = '✅ Đổi mật khẩu thành công! (Chưa kết nối Sheet — chỉ lưu thiết bị này)';
+    okEl.style.display = 'block';
+  }
+
+  logAction('login', 'Đổi mật khẩu thành công');
+  if (SHEET_URL) sheetPost({ action: 'notify_pwd_change', email: currentUser.email, name: currentUser.name, changedAt: new Date().toLocaleString('vi-VN') });
+  setTimeout(() => closeModal('changePwdModal'), 3500);
+}
+
+// syncPwdToSheet async — returns true/false
+function syncPwdToSheetAsync(email, pwd) {
+  return new Promise((resolve) => {
+    const cbName = 'pwdCb_' + Date.now();
+    const script = document.createElement('script');
+    const params = new URLSearchParams({ action: 'set_pwd', email, newpwd: pwd, callback: cbName });
+    const timer = setTimeout(() => { delete window[cbName]; script.remove(); resolve(false); }, 10000);
+    window[cbName] = function(res) {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      console.log('[Password Sync]', res && res.ok ? '✓ OK' : '✗ ' + (res && res.error));
+      resolve(!!(res && res.ok));
+    };
+    script.onerror = () => { clearTimeout(timer); delete window[cbName]; resolve(false); };
+    script.src = SHEET_URL + '?' + params.toString();
+    document.head.appendChild(script);
+  });
 }
 /* ======================== END CHANGE PASSWORD ======================== */
 
