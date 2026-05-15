@@ -818,7 +818,7 @@
 <script>
 const STORAGE_KEY = 'dcss_tickets_v1';
 const URL_KEY = 'dcss_sheet_url';
-const NEW_URL = 'https://script.google.com/macros/s/AKfycbxawJqpZbWLf8gsSXljJ-zgjVc6Y5wTsENV4TNbpnlUWzHx646QNTu3kRynnbqPbDBI/exec';
+const NEW_URL = 'https://script.google.com/macros/s/AKfycbwWEXdw_rjiVtHRmFTcH5Djh3_uE5-Ynvn7pHiLFWy0A0U9yNHWQopCfE9XC0M-Mx8B/exec';
 const OLD_URL = 'https://script.google.com/macros/s/AKfycbwgdGWQh6-62Lbj4o_eZajYrcrZwedp0BA89y-Ua7VuSZCh8RiyMKPZxrz29c4LGsY9/exec';
 // Auto-migrate old URL to new one in localStorage
 if (localStorage.getItem(URL_KEY) === OLD_URL) {
@@ -1424,42 +1424,37 @@ function exportExcel() {
     'caseStatus','pendingReason','symptom','partReplaced','partQty','actionPlan',
     'newPartSN','defectivePartSN','requestBy','contactPerson','note'
   ];
-  // Fields that must be forced as text to prevent XLSX auto-converting to date/time
-  const textFields = new Set(['receivedTime','onsiteTime1','onsiteTime2','receivedDate','onsiteDate1','onsiteDate2']);
 
-  const rows = tickets.map((t, i) => {
-    const row = {};
-    cols.forEach((col, ci) => {
-      const key = keys[ci];
-      if (key === null) { row[col] = i + 1; return; }
-      const val = t[key] || '';
-      // Prefix time/date fields with apostrophe trick via cell object to force text
-      row[col] = val;
+  // These columns must ALWAYS be plain text — never let XLSX parse them as date/time
+  const forceText = new Set([
+    'receivedDate','receivedTime','onsiteDate1','onsiteTime1','onsiteDate2','onsiteTime2'
+  ]);
+
+  // Build Array-of-Arrays manually so we control cell type directly
+  const aoa = [cols]; // header row
+
+  tickets.forEach((t, i) => {
+    const row = keys.map((key, ci) => {
+      if (key === null) return i + 1; // Item No
+      const val = (t[key] !== undefined && t[key] !== null) ? String(t[key]) : '';
+      if (forceText.has(key)) {
+        // Return a cell object with type 's' (string) — XLSX will not auto-convert
+        return { v: val, t: 's' };
+      }
+      return val;
     });
-    return row;
+    aoa.push(row);
   });
 
-  const ws = XLSX.utils.json_to_sheet(rows, { header: cols });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  // Post-process: force time & date cells to be text type (z = format, t = type)
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  // Find column indices for time/date fields
-  const timeColIndices = new Set();
-  keys.forEach((k, ci) => { if (k && textFields.has(k)) timeColIndices.add(ci); });
-
-  for (let R = range.s.r + 1; R <= range.e.r; R++) {
-    timeColIndices.forEach(ci => {
-      const cellRef = XLSX.utils.encode_cell({ r: R, c: ci });
-      const cell = ws[cellRef];
-      if (cell && cell.v !== '' && cell.v !== undefined) {
-        // Force as text string
-        cell.t = 's';
-        cell.v = String(cell.v);
-        delete cell.z;
-        delete cell.w;
-      }
-    });
-  }
+  // Set column widths for readability
+  ws['!cols'] = cols.map((c, i) => {
+    if (i === 0) return { wch: 6 };
+    if (['Symptom','Action Plan','Note','EU'].includes(c)) return { wch: 40 };
+    if (['Company Name','SLA Level','Serial Number or Service Tag'].includes(c)) return { wch: 28 };
+    return { wch: 18 };
+  });
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'CSR');
@@ -1821,6 +1816,7 @@ const USERS = [
   { name: 'Sang Tran',   email: 'sang.tran@dcsstech.com',   avatar: 'ST', admin: false, pwd: 'dcss@sang2026'   },
   { name: 'Quang Luu',   email: 'quang.luu@dcsstech.com',   avatar: 'QL', admin: false, pwd: 'dcss@quang2026'  },
   { name: 'Quan Nguyen', email: 'quan.nguyen@dcsstech.com', avatar: 'QN', admin: true,  pwd: 'dcss@quan2026'   },
+  { name: 'test',   email: 'test@dcsstech.com',   avatar: 'ts', admin: false, pwd: 'dcss@test2026'  },
 ];
 const ADMIN_EMAIL = 'quan.nguyen@dcsstech.com';
 const SESSION_KEY = 'dcss_session_v1';
@@ -2294,6 +2290,7 @@ renderTable();
         <option value="tang.pham@dcsstech.com">Tang Pham</option>
         <option value="sang.tran@dcsstech.com">Sang Tran</option>
         <option value="quang.luu@dcsstech.com">Quang Luu</option>
+		<option value="test@dcsstech.com">test</option>
         <option value="quan.nguyen@dcsstech.com">Quan Nguyen (Admin)</option>
       </select>
     </div>
